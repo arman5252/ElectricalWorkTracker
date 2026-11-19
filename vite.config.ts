@@ -212,6 +212,7 @@ function localDataSyncPlugin(): Plugin {
 }
 
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     tailwindcss(),
