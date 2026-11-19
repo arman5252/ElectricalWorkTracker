@@ -340,35 +340,6 @@ export const ScheduleView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Real-time Google Sheet Connection Notification Banner */}
-      {!settings.webAppUrl && (
-        <div className="p-4 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-slate-900 border border-amber-500/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0 border border-amber-500/30">
-              <AlertCircle className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <div className="font-bold text-slate-100 flex items-center gap-2 text-sm">
-                <span>Google Sheets Two-Way Live Sync is in Standby</span>
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">1-Min Setup</span>
-              </div>
-              <p className="text-slate-400 text-xs mt-0.5">
-                To sync your edits directly into your Google Sheet (<code className="text-amber-300 font-mono">1vGcIIdzGF8PaF1F2iCzwoRZh0WcSLuAKiJxiOTsDDIk</code>), connect your Google Apps Script Web App URL.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              const btn = document.getElementById('open-settings-button');
-              if (btn) btn.click();
-            }}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-all shrink-0 active:scale-95 shadow-lg shadow-amber-500/20"
-          >
-            Connect Google Sheet Now
-          </button>
-        </div>
-      )}
-
       {/* Top Search & Filter Bar */}
       <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-4 shadow-xl space-y-3.5">
         

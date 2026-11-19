@@ -6,8 +6,6 @@ import {
   ExternalLink, 
   Upload, 
   CheckCircle2, 
-  FolderGit2, 
-  FileSpreadsheet, 
   Save,
   ShieldCheck,
   Check,
@@ -22,8 +20,6 @@ export const CableDetailModal: React.FC = () => {
     selectedCable, 
     setSelectedCable, 
     updateCable, 
-    uploadDriveDrawing, 
-    settings, 
     isSyncing,
     currentUser,
     canEdit,
@@ -72,18 +68,15 @@ export const CableDetailModal: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setIsUploading(true);
-      const url = await uploadDriveDrawing(file);
-      if (url) {
-        setDrawingUrl(url);
-      } else {
-        // Local preview fallback
-        const reader = new FileReader();
-        reader.onload = () => {
-          setDrawingUrl(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-      }
-      setIsUploading(false);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setDrawingUrl(reader.result as string);
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -427,39 +420,18 @@ export const CableDetailModal: React.FC = () => {
                 href={drawingUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sky-400 hover:underline flex items-center gap-1"
+                className="text-amber-400 hover:underline flex items-center gap-1 font-semibold"
               >
-                View in Google Drive <ExternalLink className="w-3 h-3" />
+                View Attachment <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           )}
 
           {/* Action buttons */}
           <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-            {/* Sheet & Drive links - Admin Profile Only */}
-            {currentUser?.role === 'admin' ? (
-              <div className="flex items-center gap-2">
-                <a
-                  href={settings.spreadsheetUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-slate-400 hover:text-emerald-400 flex items-center gap-1 text-[11px]"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>Open in Sheet</span>
-                </a>
-                <span className="text-slate-600">•</span>
-                <a
-                  href={settings.driveFolderUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-slate-400 hover:text-sky-400 flex items-center gap-1 text-[11px]"
-                >
-                  <FolderGit2 className="w-3.5 h-3.5" />
-                  <span>Open Drive Folder</span>
-                </a>
-              </div>
-            ) : <div />}
+            <div className="text-[11px] text-slate-500">
+              Synced with Supabase Cloud DB
+            </div>
 
             <div className="flex items-center gap-2">
               <button

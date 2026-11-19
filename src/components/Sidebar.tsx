@@ -7,10 +7,9 @@ import {
   Lock, 
   Boxes, 
   BarChart3, 
-  FileSpreadsheet, 
-  FolderGit2, 
   Database,
-  ExternalLink
+  ExternalLink,
+  Zap
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -117,54 +116,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSettings }) => {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-semibold text-slate-200">Google Cloud DB</span>
+            <span className="text-xs font-semibold text-slate-200">Supabase DB</span>
           </div>
           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            Active
+            Real-time
           </span>
         </div>
 
         <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
-          Google Sheets stores tabular data, and Google Drive holds field photos & drawings.
+          PostgreSQL database with instant two-way WebSocket sync across all engineering devices.
         </p>
 
         {currentUser?.role === 'admin' && (
-          <>
-            <div className="space-y-1.5 pt-1 border-t border-slate-800 text-[11px]">
-              <a
-                href={state.settings.spreadsheetUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between text-slate-300 hover:text-emerald-400 transition-colors py-0.5"
-              >
-                <span className="flex items-center gap-1.5">
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-                  Spreadsheet DB
-                </span>
-                <ExternalLink className="w-3 h-3 text-slate-500" />
-              </a>
-
-              <a
-                href={state.settings.driveFolderUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between text-slate-300 hover:text-sky-400 transition-colors py-0.5"
-              >
-                <span className="flex items-center gap-1.5">
-                  <FolderGit2 className="w-3.5 h-3.5 text-sky-400" />
-                  Drive Storage
-                </span>
-                <ExternalLink className="w-3 h-3 text-slate-500" />
-              </a>
-            </div>
-
-            <button
-              onClick={onOpenSettings}
-              className="mt-3 w-full py-1 px-2 text-[11px] font-medium text-center text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded border border-slate-700 transition-colors"
-            >
-              Manage Web App API
-            </button>
-          </>
+          <button
+            onClick={onOpenSettings}
+            className="mt-2 w-full py-1.5 px-2 text-[11px] font-semibold text-center text-amber-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded border border-slate-700 transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>Manage Supabase DB</span>
+          </button>
         )}
       </div>
     </aside>

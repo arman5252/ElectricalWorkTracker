@@ -2,13 +2,11 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { CableEntry, CableLayingStatus, CommissioningStatus, BoqItem, ProjectSettings, AppUser } from '../types';
 import { AUTH_STORAGE_KEY, canEditSchedule, canSignApproval } from '../services/authService';
 import { initialCables, boqSummary, projectMeta } from '../data/cableData';
-import { fetchLiveSheetData, LiveSyncResult } from '../services/sheetLiveSync';
 import { 
   getSupabaseClient, 
   fetchAllCablesFromSupabase, 
   updateCableInSupabase, 
-  mapDbRowToCableEntry,
-  getStoredSupabaseCredentials
+  mapDbRowToCableEntry 
 } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
 
@@ -39,15 +37,9 @@ interface AppContextType {
   canEdit: boolean;
   canApproveLevel: (level: 1 | 2 | 3) => boolean;
   
-  // Real-time Live Sync State
-  isLiveSyncEnabled: boolean;
-  setIsLiveSyncEnabled: (enabled: boolean) => void;
-  liveSyncIntervalSeconds: number;
-  setLiveSyncIntervalSeconds: (seconds: number) => void;
-  lastLiveSyncTimestamp: string | null;
-  liveSyncStatus: 'live' | 'syncing' | 'error' | 'paused';
-  liveSyncError: string | null;
-  manualRefreshFromSheet: () => Promise<void>;
+  // Database Connection Status
+  dbStatus: 'connected' | 'connecting' | 'standby';
+  reloadFromSupabase: () => Promise<void>;
 
   // Filters
   searchQuery: string;
@@ -86,12 +78,9 @@ interface AppContextType {
   importSpreadsheetData: (newCables: CableEntry[]) => void;
   resetToOriginalSpreadsheet: () => void;
   updateSettings: (newSettings: Partial<ProjectSettings>) => void;
-  uploadDriveDrawing: (file: File) => Promise<string | null>;
 
-  // Sync state
+  // Local Excel State & Client-side Exporter
   isSyncing: boolean;
-  setIsSyncing: (s: boolean) => void;
-  triggerGoogleSync: (direction: 'push' | 'pull') => Promise<boolean>;
   downloadExcelFile: () => void;
   lastExcelSaveTime: string | null;
 
@@ -127,8 +116,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(saved);
         return {
           ...projectMeta,
-          ...parsed,
-          webAppUrl: (parsed.webAppUrl && parsed.webAppUrl.trim()) ? parsed.webAppUrl : (projectMeta.webAppUrl || '')
+          ...parsed
         };
       }
     } catch (e) {}
@@ -168,12 +156,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const canEdit = canEditSchedule(currentUser);
   const canApproveLevel = (level: 1 | 2 | 3) => canSignApproval(currentUser, level);
 
-  // Real-Time Live Sync Settings
-  const [isLiveSyncEnabled, setIsLiveSyncEnabled] = useState<boolean>(true);
-  const [liveSyncIntervalSeconds, setLiveSyncIntervalSeconds] = useState<number>(10);
-  const [lastLiveSyncTimestamp, setLastLiveSyncTimestamp] = useState<string | null>(null);
-  const [liveSyncStatus, setLiveSyncStatus] = useState<'live' | 'syncing' | 'error' | 'paused'>('live');
-  const [liveSyncError, setLiveSyncError] = useState<string | null>(null);
+  const [dbStatus, setDbStatus] = useState<'connected' | 'connecting' | 'standby'>('connecting');
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -190,7 +173,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [commissioningFilter, setCommissioningFilter] = useState('All');
   const [approverFilter, setApproverFilter] = useState('All');
 
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncing] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
@@ -219,86 +202,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const performLiveSync = async (silent = true): Promise<LiveSyncResult> => {
-    setLiveSyncStatus('syncing');
-    const res = await fetchLiveSheetData(settings.spreadsheetUrl, settings.webAppUrl);
-
-    if (res.success && res.cables && res.cables.length > 0) {
-      setLastLiveSyncTimestamp(res.timestamp);
-      setLiveSyncStatus('live');
-      setLiveSyncError(null);
-
-      setCables(prevCables => {
-        const prevIdMap = new Map(prevCables.map(c => [c.id, c]));
-        const prevTagMap = new Map(prevCables.map(c => [c.cableTag, c]));
-        const merged = res.cables!.map(incoming => {
-          const existing = prevIdMap.get(incoming.id) || prevTagMap.get(incoming.cableTag);
-          return {
-            ...incoming,
-            drawingUrl: incoming.drawingUrl || existing?.drawingUrl,
-            notes: incoming.notes || existing?.notes
-          };
-        });
-
-        if (selectedCable) {
-          const updatedSelected = merged.find(c => c.id === selectedCable.id || c.cableTag === selectedCable.cableTag);
-          if (updatedSelected) setSelectedCable(updatedSelected);
-        }
-
-        return merged;
-      });
-
-      if (!silent) {
-        showToast(`Real-time update: Synced ${res.cables.length} cables from sheet!`, 'success');
-      }
+  const reloadFromSupabase = async () => {
+    setDbStatus('connecting');
+    const dbCables = await fetchAllCablesFromSupabase();
+    if (dbCables && dbCables.length > 0) {
+      setCables(dbCables);
+      setDbStatus('connected');
+      showToast(`Reloaded ${dbCables.length} cables from Supabase Database!`, 'success');
     } else {
-      setLiveSyncStatus('error');
-      setLiveSyncError(res.error || 'Unable to fetch from sheet');
-      if (!silent) {
-        showToast(res.error || 'Failed to update from sheet.', 'warning');
-      }
+      setDbStatus('standby');
+      showToast('Could not fetch cables from Supabase. Working with cached project schedule.', 'info');
     }
-
-    return res;
   };
-
-  const manualRefreshFromSheet = async () => {
-    showToast('Fetching latest updates from Google Sheet...', 'info');
-    await performLiveSync(false);
-  };
-
-  const pollTimerRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (!isLiveSyncEnabled) {
-      setLiveSyncStatus('paused');
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-      return;
-    }
-
-    performLiveSync(true);
-
-    const intervalMs = Math.max(5, liveSyncIntervalSeconds) * 1000;
-    pollTimerRef.current = setInterval(() => {
-      performLiveSync(true);
-    }, intervalMs);
-
-    return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-    };
-  }, [isLiveSyncEnabled, liveSyncIntervalSeconds, settings.spreadsheetUrl, settings.webAppUrl]);
 
   // Supabase Real-Time WebSocket & Auto-Sync Hook
   useEffect(() => {
     const client = getSupabaseClient();
-    if (!client) return;
+    if (!client) {
+      setDbStatus('standby');
+      return;
+    }
 
     // 1. Initial fetch from Supabase if table has records
     fetchAllCablesFromSupabase().then(dbCables => {
       if (dbCables && dbCables.length > 0) {
         setCables(dbCables);
+        setDbStatus('connected');
         console.log(`[Supabase DB] Loaded ${dbCables.length} cables from Supabase`);
+      } else {
+        setDbStatus('connected');
       }
+    }).catch(() => {
+      setDbStatus('standby');
     });
 
     // 2. Real-Time WebSocket Channel for instant sync across all users
@@ -309,13 +244,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const updated = mapDbRowToCableEntry(payload.new);
             setCables(prev => {
-              const exists = prev.some(c => c.cableTag === updated.cableTag);
+              const exists = prev.some(c => c.id === updated.id || c.cableTag === updated.cableTag);
               if (exists) {
-                return prev.map(c => c.cableTag === updated.cableTag ? { ...c, ...updated } : c);
+                return prev.map(c => (c.id === updated.id || c.cableTag === updated.cableTag) ? { ...c, ...updated } : c);
               }
               return [...prev, updated];
             });
-            if (selectedCable && selectedCable.cableTag === updated.cableTag) {
+            if (selectedCable && (selectedCable.id === updated.id || selectedCable.cableTag === updated.cableTag)) {
               setSelectedCable(prev => prev ? { ...prev, ...updated } : updated);
             }
           }
@@ -331,98 +266,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const [lastExcelSaveTime, setLastExcelSaveTime] = useState<string | null>(null);
-  const isInitialMount = useRef(true);
-  const saveDebounceTimer = useRef<any>(null);
 
-  // Sync cable changes to Google Sheet Web App (if URL configured)
-  const lastMissingWebAppAlert = useRef<number>(0);
-  const syncCableToGoogleSheet = async (cable: CableEntry) => {
-    if (!settings.webAppUrl || !settings.webAppUrl.trim()) {
-      const now = Date.now();
-      if (now - lastMissingWebAppAlert.current > 15000) {
-        lastMissingWebAppAlert.current = now;
-        showToast('Tip: Connect Google Apps Script in Settings ⚙️ to save directly into Google Sheet cells.', 'info');
-      }
-      return;
-    }
-
-    try {
-      // 1. Send via GET query params (mode: no-cors bypasses cross-origin 302 redirects)
-      const url = new URL(settings.webAppUrl.trim());
-      url.searchParams.set('action', 'updateCable');
-      url.searchParams.set('cableTag', cable.cableTag);
-      url.searchParams.set('cableLayingStatus', cable.cableLayingStatus);
-      url.searchParams.set('cableLayingRemarks', cable.cableLayingRemarks || '');
-      url.searchParams.set('preCommissioningStatus', cable.preCommissioningStatus);
-      url.searchParams.set('preCommissioningRemarks', cable.preCommissioningRemarks || '');
-      url.searchParams.set('commissioningStatus', cable.commissioningStatus);
-      url.searchParams.set('commissioningRemarks', cable.commissioningRemarks || '');
-      url.searchParams.set('approvedBy1', cable.approvedBy1 || '');
-      url.searchParams.set('approvedBy2', cable.approvedBy2 || '');
-      url.searchParams.set('approvedBy3', cable.approvedBy3 || '');
-      url.searchParams.set('_t', Date.now().toString());
-
-      fetch(url.toString(), {
-        method: 'GET',
-        mode: 'no-cors'
-      }).catch(() => {});
-
-      // 2. Also send via POST payload for complete coverage
-      fetch(settings.webAppUrl.trim(), {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'updateCable',
-          ...cable
-        })
-      }).catch(() => {});
-
-      console.log(`[Google Sheet Two-Way Write] Dispatched update for ${cable.cableTag} to Google Sheet`);
-    } catch (e) {
-      console.warn(`[Google Sheet Write Notice]`, e);
-    }
-  };
-
-  // Check for Web App URL in URL query parameters on initial load
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const apiParam = params.get('api');
-      if (apiParam && apiParam.startsWith('http')) {
-        updateSettings({ webAppUrl: apiParam });
-        showToast('Google Sheet Web App URL connected from link!', 'success');
-      }
-    } catch (e) {}
-  }, []);
-
-  // Auto-save on edit: writes locally if server exists and tracks save timestamp
+  // Auto-save on edit: writes timestamp
   useEffect(() => {
     setLastExcelSaveTime(new Date().toLocaleTimeString());
-
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      fetch('/api/save-excel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cables })
-      }).catch(() => {});
-      return;
-    }
-
-    if (saveDebounceTimer.current) clearTimeout(saveDebounceTimer.current);
-
-    saveDebounceTimer.current = setTimeout(() => {
-      fetch('/api/save-excel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cables })
-      }).catch(() => {});
-    }, 350);
-
-    return () => {
-      if (saveDebounceTimer.current) clearTimeout(saveDebounceTimer.current);
-    };
   }, [cables]);
 
   // Client-side instant Excel export (Works 100% on GitHub Pages, mobile, and desktop)
@@ -479,7 +326,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('All filters cleared', 'info');
   };
 
-  // Actions for 3 Stages & Approvals with Real-time Two-Way Write
+  // Actions for 3 Stages & Approvals with direct Supabase Database Persistence
   const updateCableLayingStatus = (id: string, status: CableLayingStatus, remarks?: string) => {
     if (!canEdit) {
       showToast('Authentication required: Please log in as Senior Engineer or Admin to edit Cable Laying.', 'warning');
@@ -502,10 +349,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return c;
     }));
     if (targetUpdated) {
-      syncCableToGoogleSheet(targetUpdated);
       updateCableInSupabase(targetUpdated);
     }
-    showToast(`Cable Laying status set to "${status}" (Saving to Excel & Database...)`, 'success');
+    showToast(`Cable Laying status set to "${status}" (Saved to Supabase DB)`, 'success');
   };
 
   const updatePreCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
@@ -530,10 +376,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return c;
     }));
     if (targetUpdated) {
-      syncCableToGoogleSheet(targetUpdated);
       updateCableInSupabase(targetUpdated);
     }
-    showToast(`Pre-Commissioning status set to "${status}" (Saving to Excel & Database...)`, 'success');
+    showToast(`Pre-Commissioning status set to "${status}" (Saved to Supabase DB)`, 'success');
   };
 
   const updateCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
@@ -558,10 +403,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return c;
     }));
     if (targetUpdated) {
-      syncCableToGoogleSheet(targetUpdated);
       updateCableInSupabase(targetUpdated);
     }
-    showToast(`Commissioning status set to "${status}" (Saving to Excel & Database...)`, 'success');
+    showToast(`Commissioning status set to "${status}" (Saved to Supabase DB)`, 'success');
   };
 
   const updateApprovers = (id: string, level: 1 | 2 | 3, name: string) => {
@@ -588,10 +432,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return c;
     }));
     if (targetUpdated) {
-      syncCableToGoogleSheet(targetUpdated);
       updateCableInSupabase(targetUpdated);
     }
-    showToast(`Sign-off updated for Level ${level} (Saving to Excel & Database...)`, 'success');
+    showToast(`Sign-off updated for Level ${level} (Saved to Supabase DB)`, 'success');
   };
 
   const updateCable = (id: string, updates: Partial<CableEntry>) => {
@@ -613,10 +456,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return c;
     }));
     if (targetUpdated) {
-      syncCableToGoogleSheet(targetUpdated);
       updateCableInSupabase(targetUpdated);
     }
-    showToast(`Cable updated & storing to Excel & Database...`, 'info');
+    showToast(`Cable updated & saved to Supabase DB`, 'info');
   };
 
   const importSpreadsheetData = (newCables: CableEntry[]) => {
@@ -635,108 +477,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Settings updated', 'success');
   };
 
-  const uploadDriveDrawing = async (file: File): Promise<string | null> => {
-    if (!settings.webAppUrl) {
-      showToast('Connect Google Apps Script Web App in Settings to upload directly to Drive folder.', 'warning');
-      return null;
-    }
-
-    setIsSyncing(true);
-    showToast('Uploading to Google Drive Folder...', 'info');
-
-    try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      const base64Data = await base64Promise;
-      const res = await fetch(settings.webAppUrl, {
-        method: 'POST',
-        mode: 'cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'uploadFile',
-          fileName: `Drawing_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
-          mimeType: file.type || 'image/jpeg',
-          base64Data
-        })
-      });
-
-      const json = await res.json();
-      if (json.success && json.url) {
-        showToast('Uploaded to Google Drive!', 'success');
-        return json.url;
-      } else {
-        showToast(json.error || 'Upload failed', 'error');
-        return null;
-      }
-    } catch (e: any) {
-      showToast(`Upload failed: ${e.message}`, 'error');
-      return null;
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const triggerGoogleSync = async (direction: 'push' | 'pull'): Promise<boolean> => {
-    if (!settings.webAppUrl) {
-      showToast('Please set your Google Apps Script Web App URL first.', 'warning');
-      return false;
-    }
-
-    setIsSyncing(true);
-    showToast(direction === 'push' ? 'Pushing cable schedule to Google Sheets...' : 'Pulling schedule from Google Sheets...', 'info');
-
-    try {
-      if (direction === 'push') {
-        const res = await fetch(settings.webAppUrl, {
-          method: 'POST',
-          mode: 'cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'syncCables',
-            cables: cables,
-            settings: settings
-          })
-        });
-
-        const json = await res.json();
-        if (json.success) {
-          const nowStr = new Date().toLocaleTimeString();
-          setSettings(prev => ({ ...prev, lastSyncTimestamp: nowStr }));
-          showToast(`Google Sheets updated successfully at ${nowStr}!`, 'success');
-          return true;
-        } else {
-          showToast(`Push failed: ${json.error || 'Server error'}`, 'error');
-          return false;
-        }
-      } else {
-        const url = new URL(settings.webAppUrl);
-        url.searchParams.set('action', 'getCables');
-        const res = await fetch(url.toString(), { method: 'GET', mode: 'cors' });
-        const json = await res.json();
-        if (json.success && json.data && json.data.cables) {
-          setCables(json.data.cables);
-          const nowStr = new Date().toLocaleTimeString();
-          setSettings(prev => ({ ...prev, lastSyncTimestamp: nowStr }));
-          showToast(`Pulled ${json.data.cables.length} cables from Google Sheets!`, 'success');
-          return true;
-        } else {
-          showToast(`Pull error: ${json.error || 'No cables returned'}`, 'error');
-          return false;
-        }
-      }
-    } catch (err: any) {
-      showToast(`Sync exception: ${err.message}`, 'error');
-      return false;
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   return (
     <AppContext.Provider value={{
       cables,
@@ -753,14 +493,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logout,
       canEdit,
       canApproveLevel,
-      isLiveSyncEnabled,
-      setIsLiveSyncEnabled,
-      liveSyncIntervalSeconds,
-      setLiveSyncIntervalSeconds,
-      lastLiveSyncTimestamp,
-      liveSyncStatus,
-      liveSyncError,
-      manualRefreshFromSheet,
+      dbStatus,
+      reloadFromSupabase,
       searchQuery,
       setSearchQuery,
       scheduleTypeFilter,
@@ -792,10 +526,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       importSpreadsheetData,
       resetToOriginalSpreadsheet,
       updateSettings,
-      uploadDriveDrawing,
       isSyncing,
-      setIsSyncing,
-      triggerGoogleSync,
       downloadExcelFile,
       lastExcelSaveTime,
       toasts,
