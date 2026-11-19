@@ -12343,5 +12343,6 @@ export const projectMeta = {
   revision: 'Rev. 3 (17.11.2025)',
   spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1vGcIIdzGF8PaF1F2iCzwoRZh0WcSLuAKiJxiOTsDDIk',
   driveFolderUrl: 'https://drive.google.com/drive/folders/1PenXtqy18EQGOg8ilsQGz-7L_8X-4qBO',
-  driveFolderId: '1PenXtqy18EQGOg8ilsQGz-7L_8X-4qBO'
+  driveFolderId: '1PenXtqy18EQGOg8ilsQGz-7L_8X-4qBO',
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbxLWrq_TjtBS8BMY8HxI8daiKCySua09CqL52u7vPnXMryZbFuXg1j8WLamfY-3AS4p/exec'
 };

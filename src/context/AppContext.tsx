@@ -107,12 +107,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const saved = localStorage.getItem(SETTINGS_KEY);
       if (saved) {
-        return { ...projectMeta, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...projectMeta,
+          ...parsed,
+          webAppUrl: (parsed.webAppUrl && parsed.webAppUrl.trim()) ? parsed.webAppUrl : (projectMeta.webAppUrl || '')
+        };
       }
     } catch (e) {}
     return {
       ...projectMeta,
-      webAppUrl: '',
       lastSyncTimestamp: null
     };
   });
