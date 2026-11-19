@@ -181,15 +181,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setLiveSyncError(null);
 
       setCables(prevCables => {
-        const prevMap = new Map(prevCables.map(c => [c.cableTag, c]));
-        return res.cables!.map(incoming => {
-          const existing = prevMap.get(incoming.cableTag);
+        const prevIdMap = new Map(prevCables.map(c => [c.id, c]));
+        const prevTagMap = new Map(prevCables.map(c => [c.cableTag, c]));
+        const merged = res.cables!.map(incoming => {
+          const existing = prevIdMap.get(incoming.id) || prevTagMap.get(incoming.cableTag);
           return {
             ...incoming,
             drawingUrl: incoming.drawingUrl || existing?.drawingUrl,
             notes: incoming.notes || existing?.notes
           };
         });
+
+        if (selectedCable) {
+          const updatedSelected = merged.find(c => c.id === selectedCable.id || c.cableTag === selectedCable.cableTag);
+          if (updatedSelected) setSelectedCable(updatedSelected);
+        }
+
+        return merged;
       });
 
       if (!silent) {
@@ -237,9 +245,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const saveDebounceTimer = useRef<any>(null);
 
   // Sync cable changes to Google Sheet Web App (if URL configured)
+  const lastMissingWebAppAlert = useRef<number>(0);
   const syncCableToGoogleSheet = async (cable: CableEntry) => {
-    if (!settings.webAppUrl || !settings.webAppUrl.trim()) return;
+    if (!settings.webAppUrl || !settings.webAppUrl.trim()) {
+      const now = Date.now();
+      if (now - lastMissingWebAppAlert.current > 15000) {
+        lastMissingWebAppAlert.current = now;
+        showToast('Tip: Connect Google Apps Script in Settings ⚙️ to save directly into Google Sheet cells.', 'info');
+      }
+      return;
+    }
+
     try {
+      // 1. Send via GET query params (mode: no-cors bypasses cross-origin 302 redirects)
       const url = new URL(settings.webAppUrl.trim());
       url.searchParams.set('action', 'updateCable');
       url.searchParams.set('cableTag', cable.cableTag);
@@ -254,11 +272,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       url.searchParams.set('approvedBy3', cable.approvedBy3 || '');
       url.searchParams.set('_t', Date.now().toString());
 
-      await fetch(url.toString(), {
+      fetch(url.toString(), {
         method: 'GET',
         mode: 'no-cors'
-      });
-      console.log(`[Google Sheet Two-Way Write] Synced ${cable.cableTag} to Google Sheet`);
+      }).catch(() => {});
+
+      // 2. Also send via POST payload for complete coverage
+      fetch(settings.webAppUrl.trim(), {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'updateCable',
+          ...cable
+        })
+      }).catch(() => {});
+
+      console.log(`[Google Sheet Two-Way Write] Dispatched update for ${cable.cableTag} to Google Sheet`);
     } catch (e) {
       console.warn(`[Google Sheet Write Notice]`, e);
     }
