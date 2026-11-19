@@ -209,7 +209,7 @@ export async function updateCableInSupabase(cable: CableEntry): Promise<boolean>
     const row = mapCableEntryToDbRow(cable);
     const { error } = await client
       .from('cables')
-      .upsert(row, { onConflict: 'cable_tag' });
+      .upsert(row, { onConflict: 'id' });
 
     if (error) {
       console.error('[Supabase Upsert Error]:', error.message);
@@ -235,7 +235,7 @@ export async function bulkSeedCablesToSupabase(cables: CableEntry[], onProgress?
       const chunk = rows.slice(i, i + chunkSize);
       const { error } = await client
         .from('cables')
-        .upsert(chunk, { onConflict: 'cable_tag' });
+        .upsert(chunk, { onConflict: 'id' });
 
       if (error) {
         throw new Error(error.message);

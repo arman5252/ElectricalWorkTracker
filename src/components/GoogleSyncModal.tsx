@@ -116,7 +116,7 @@ create table if not exists public.cables (
     schedule_type text not null default 'Control Cable Schedule',
     section text not null,
     sr_no text not null,
-    cable_tag text not null unique,
+    cable_tag text not null,
     from_location text,
     from_equipment text,
     to_location text,
