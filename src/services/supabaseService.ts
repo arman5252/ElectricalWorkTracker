@@ -4,23 +4,36 @@ import { CableEntry } from '../types';
 export const SUPABASE_URL_KEY = 'volttrack_supabase_url';
 export const SUPABASE_ANON_KEY = 'volttrack_supabase_anon_key';
 
+export const DEFAULT_SUPABASE_URL = 'https://pdgymjghsxkebdipuzwf.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_meUYwZlVSzp27MWFA2O1AA_GC0Lu4RQ';
+
 let cachedClient: SupabaseClient | null = null;
 let cachedUrl = '';
 let cachedKey = '';
 
+export function cleanSupabaseUrl(raw: string): string {
+  if (!raw) return '';
+  let url = raw.trim();
+  // Remove /rest/v1 or trailing slashes if user pasted full REST endpoint
+  url = url.replace(/\/rest\/v1\/?$/, '');
+  url = url.replace(/\/+$/, '');
+  return url;
+}
+
 export function getStoredSupabaseCredentials(): { url: string; anonKey: string } {
   try {
-    const url = localStorage.getItem(SUPABASE_URL_KEY) || (import.meta as any).env?.VITE_SUPABASE_URL || '';
-    const anonKey = localStorage.getItem(SUPABASE_ANON_KEY) || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
-    return { url: url.trim(), anonKey: anonKey.trim() };
+    const rawUrl = localStorage.getItem(SUPABASE_URL_KEY) || (import.meta as any).env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+    const rawKey = localStorage.getItem(SUPABASE_ANON_KEY) || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+    return { url: cleanSupabaseUrl(rawUrl), anonKey: rawKey.trim() };
   } catch {
-    return { url: '', anonKey: '' };
+    return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
   }
 }
 
 export function saveStoredSupabaseCredentials(url: string, anonKey: string) {
   try {
-    if (url) localStorage.setItem(SUPABASE_URL_KEY, url.trim());
+    const cleanUrl = cleanSupabaseUrl(url);
+    if (cleanUrl) localStorage.setItem(SUPABASE_URL_KEY, cleanUrl);
     else localStorage.removeItem(SUPABASE_URL_KEY);
 
     if (anonKey) localStorage.setItem(SUPABASE_ANON_KEY, anonKey.trim());
@@ -147,6 +160,9 @@ export async function testSupabaseConnection(url?: string, anonKey?: string): Pr
     if (error) {
       if (error.code === '42P01') {
         return { success: false, message: `Table "cables" not found. Please run the SQL schema in Supabase SQL Editor.` };
+      }
+      if (error.code === '42501') {
+        return { success: false, message: `Permission Denied. Please run: GRANT ALL ON TABLE public.cables TO anon, authenticated; in Supabase SQL Editor.` };
       }
       return { success: false, message: error.message };
     }
