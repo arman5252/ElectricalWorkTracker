@@ -250,27 +250,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sync cable changes to Google Sheet Web App (if URL configured)
   const syncCableToGoogleSheet = async (cable: CableEntry) => {
-    if (!settings.webAppUrl) return;
+    if (!settings.webAppUrl || !settings.webAppUrl.trim()) return;
     try {
-      await fetch(settings.webAppUrl, {
-        method: 'POST',
-        mode: 'cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'updateCable',
-          cableTag: cable.cableTag,
-          cableLayingStatus: cable.cableLayingStatus,
-          cableLayingRemarks: cable.cableLayingRemarks || '',
-          preCommissioningStatus: cable.preCommissioningStatus,
-          preCommissioningRemarks: cable.preCommissioningRemarks || '',
-          commissioningStatus: cable.commissioningStatus,
-          commissioningRemarks: cable.commissioningRemarks || '',
-          approvedBy1: cable.approvedBy1 || '',
-          approvedBy2: cable.approvedBy2 || '',
-          approvedBy3: cable.approvedBy3 || '',
-        })
+      const url = new URL(settings.webAppUrl.trim());
+      url.searchParams.set('action', 'updateCable');
+      url.searchParams.set('cableTag', cable.cableTag);
+      url.searchParams.set('cableLayingStatus', cable.cableLayingStatus);
+      url.searchParams.set('cableLayingRemarks', cable.cableLayingRemarks || '');
+      url.searchParams.set('preCommissioningStatus', cable.preCommissioningStatus);
+      url.searchParams.set('preCommissioningRemarks', cable.preCommissioningRemarks || '');
+      url.searchParams.set('commissioningStatus', cable.commissioningStatus);
+      url.searchParams.set('commissioningRemarks', cable.commissioningRemarks || '');
+      url.searchParams.set('approvedBy1', cable.approvedBy1 || '');
+      url.searchParams.set('approvedBy2', cable.approvedBy2 || '');
+      url.searchParams.set('approvedBy3', cable.approvedBy3 || '');
+      url.searchParams.set('_t', Date.now().toString());
+
+      await fetch(url.toString(), {
+        method: 'GET',
+        mode: 'no-cors'
       });
-      console.log(`[Google Sheet Live Write] Saved ${cable.cableTag} to Google Sheet`);
+      console.log(`[Google Sheet Two-Way Write] Synced ${cable.cableTag} to Google Sheet`);
     } catch (e) {
       console.warn(`[Google Sheet Write Notice]`, e);
     }

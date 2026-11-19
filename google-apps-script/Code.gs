@@ -45,6 +45,23 @@ function doGet(e) {
       });
     }
 
+    // Support WRITE via GET (avoids browser CORS preflight & redirect issues)
+    if (action === "updateCable") {
+      const p = e.parameter;
+      return handleUpdateCable(ss, {
+        cableTag: p.cableTag,
+        cableLayingStatus: p.cableLayingStatus,
+        cableLayingRemarks: p.cableLayingRemarks,
+        preCommissioningStatus: p.preCommissioningStatus,
+        preCommissioningRemarks: p.preCommissioningRemarks,
+        commissioningStatus: p.commissioningStatus,
+        commissioningRemarks: p.commissioningRemarks,
+        approvedBy1: p.approvedBy1,
+        approvedBy2: p.approvedBy2,
+        approvedBy3: p.approvedBy3
+      });
+    }
+
     // Get the target sheet
     let sheet = ss.getSheetByName("Master Cable Schedule") || 
                 ss.getSheetByName("Cable Schedule") || 
@@ -138,6 +155,72 @@ function doGet(e) {
   }
 }
 
+function handleUpdateCable(ss, payload) {
+  let sheet = getMasterSheet(ss);
+  const data = sheet.getDataRange().getValues();
+  const headerRowIdx = findHeaderRow(data);
+  const headers = data[headerRowIdx].map(h => String(h || "").trim());
+
+  const tagColIdx = findColIdx(headers, ["CABLE DESIGNATION", "DESIGNATION", "CABLE TAG", "TAG"]);
+  if (tagColIdx === -1) {
+    return jsonResponse({ success: false, error: "Cable Designation column not found" });
+  }
+
+  // Ensure required workflow columns exist in header
+  const cols = ensureWorkflowColumns(sheet, headerRowIdx, headers);
+
+  // Find target row
+  const targetTag = String(payload.cableTag || "").trim();
+  let targetRowIdx = -1;
+  for (let r = headerRowIdx + 1; r < data.length; r++) {
+    if (String(data[r][tagColIdx] || "").trim().toUpperCase() === targetTag.toUpperCase()) {
+      targetRowIdx = r + 1; // 1-based index for SpreadsheetApp
+      break;
+    }
+  }
+
+  if (targetRowIdx === -1) {
+    return jsonResponse({ success: false, error: "Cable " + targetTag + " not found in spreadsheet" });
+  }
+
+  // Write values to target cells
+  if (payload.cableLayingStatus !== undefined && cols.layingStatus) {
+    sheet.getRange(targetRowIdx, cols.layingStatus).setValue(payload.cableLayingStatus);
+  }
+  if (payload.cableLayingRemarks !== undefined && cols.layingRemarks) {
+    sheet.getRange(targetRowIdx, cols.layingRemarks).setValue(payload.cableLayingRemarks);
+  }
+  if (payload.preCommissioningStatus !== undefined && cols.preStatus) {
+    sheet.getRange(targetRowIdx, cols.preStatus).setValue(payload.preCommissioningStatus);
+  }
+  if (payload.preCommissioningRemarks !== undefined && cols.preRemarks) {
+    sheet.getRange(targetRowIdx, cols.preRemarks).setValue(payload.preCommissioningRemarks);
+  }
+  if (payload.commissioningStatus !== undefined && cols.commStatus) {
+    sheet.getRange(targetRowIdx, cols.commStatus).setValue(payload.commissioningStatus);
+  }
+  if (payload.commissioningRemarks !== undefined && cols.commRemarks) {
+    sheet.getRange(targetRowIdx, cols.commRemarks).setValue(payload.commissioningRemarks);
+  }
+  if (payload.approvedBy1 !== undefined && cols.naim) {
+    sheet.getRange(targetRowIdx, cols.naim).setValue(payload.approvedBy1 ? "Naim Bhai" : "");
+  }
+  if (payload.approvedBy2 !== undefined && cols.mosaddik) {
+    sheet.getRange(targetRowIdx, cols.mosaddik).setValue(payload.approvedBy2 ? "Mosaddik Bhai" : "");
+  }
+  if (payload.approvedBy3 !== undefined && cols.fahad) {
+    sheet.getRange(targetRowIdx, cols.fahad).setValue(payload.approvedBy3 ? "Fahad Sir" : "");
+  }
+
+  SpreadsheetApp.flush();
+  return jsonResponse({
+    success: true,
+    message: "Successfully updated cable " + targetTag + " in Google Sheet",
+    cableTag: targetTag,
+    timestamp: new Date().toISOString()
+  });
+}
+
 /**
  * Handle HTTP POST Requests
  * Used by the Dashboard to WRITE updates directly into the Google Sheet.
@@ -154,69 +237,7 @@ function doPost(e) {
 
     // 1. UPDATE A SINGLE CABLE (When user changes status, remarks, or approval)
     if (action === "updateCable") {
-      let sheet = getMasterSheet(ss);
-      const data = sheet.getDataRange().getValues();
-      const headerRowIdx = findHeaderRow(data);
-      const headers = data[headerRowIdx].map(h => String(h || "").trim());
-
-      const tagColIdx = findColIdx(headers, ["CABLE DESIGNATION", "DESIGNATION", "CABLE TAG", "TAG"]);
-      if (tagColIdx === -1) {
-        return jsonResponse({ success: false, error: "Cable Designation column not found" });
-      }
-
-      // Ensure required workflow columns exist in header
-      const cols = ensureWorkflowColumns(sheet, headerRowIdx, headers);
-
-      // Find target row
-      const targetTag = String(payload.cableTag || "").trim();
-      let targetRowIdx = -1;
-      for (let r = headerRowIdx + 1; r < data.length; r++) {
-        if (String(data[r][tagColIdx] || "").trim().toUpperCase() === targetTag.toUpperCase()) {
-          targetRowIdx = r + 1; // 1-based index for SpreadsheetApp
-          break;
-        }
-      }
-
-      if (targetRowIdx === -1) {
-        return jsonResponse({ success: false, error: "Cable " + targetTag + " not found in spreadsheet" });
-      }
-
-      // Write values to target cells
-      if (payload.cableLayingStatus !== undefined && cols.layingStatus) {
-        sheet.getRange(targetRowIdx, cols.layingStatus).setValue(payload.cableLayingStatus);
-      }
-      if (payload.cableLayingRemarks !== undefined && cols.layingRemarks) {
-        sheet.getRange(targetRowIdx, cols.layingRemarks).setValue(payload.cableLayingRemarks);
-      }
-      if (payload.preCommissioningStatus !== undefined && cols.preStatus) {
-        sheet.getRange(targetRowIdx, cols.preStatus).setValue(payload.preCommissioningStatus);
-      }
-      if (payload.preCommissioningRemarks !== undefined && cols.preRemarks) {
-        sheet.getRange(targetRowIdx, cols.preRemarks).setValue(payload.preCommissioningRemarks);
-      }
-      if (payload.commissioningStatus !== undefined && cols.commStatus) {
-        sheet.getRange(targetRowIdx, cols.commStatus).setValue(payload.commissioningStatus);
-      }
-      if (payload.commissioningRemarks !== undefined && cols.commRemarks) {
-        sheet.getRange(targetRowIdx, cols.commRemarks).setValue(payload.commissioningRemarks);
-      }
-      if (payload.approvedBy1 !== undefined && cols.naim) {
-        sheet.getRange(targetRowIdx, cols.naim).setValue(payload.approvedBy1 ? "Naim Bhai" : "");
-      }
-      if (payload.approvedBy2 !== undefined && cols.mosaddik) {
-        sheet.getRange(targetRowIdx, cols.mosaddik).setValue(payload.approvedBy2 ? "Mosaddik Bhai" : "");
-      }
-      if (payload.approvedBy3 !== undefined && cols.fahad) {
-        sheet.getRange(targetRowIdx, cols.fahad).setValue(payload.approvedBy3 ? "Fahad Sir" : "");
-      }
-
-      SpreadsheetApp.flush();
-      return jsonResponse({
-        success: true,
-        message: "Successfully updated cable " + targetTag + " in Google Sheet",
-        cableTag: targetTag,
-        timestamp: new Date().toISOString()
-      });
+      return handleUpdateCable(ss, payload);
     }
 
     // 2. BATCH SYNC ALL CABLES INTO SPREADSHEET
