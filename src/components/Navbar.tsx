@@ -8,7 +8,8 @@ import {
   BarChart3,
   ShieldCheck,
   Lock,
-  Database
+  Database,
+  Upload
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -23,6 +24,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
     cables, 
     currentUser,
     setIsLoginModalOpen,
+    setIsImportModalOpen,
     logout
   } = useApp();
 
@@ -115,6 +117,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
 
         {/* Settings & Auth */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Import Data button - Admin Profile Only */}
+          {currentUser?.role === 'admin' && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              title="Import Data from Excel, PDF, or Manual Entry (Admin Only)"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-300 hover:text-white bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 rounded-lg text-xs font-semibold transition-colors"
+            >
+              <Upload className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Import</span>
+            </button>
+          )}
+
           {/* Settings button - Admin Profile Only */}
           {currentUser?.role === 'admin' && (
             <button

@@ -295,3 +295,26 @@ function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+/**
+ * Keep-Alive Cron Trigger for Supabase Database
+ * Set up a Time-driven Trigger in Apps Script to run this once a day or every few days
+ * so that the Supabase database never goes to sleep.
+ */
+function keepSupabaseAlive() {
+  const url = "https://pdgymjghsxkebdipuzwf.supabase.co/rest/v1/cables?select=cable_tag&limit=1";
+  const options = {
+    method: "get",
+    headers: {
+      "apikey": "sb_publishable_meUYwZlVSzp27MWFA2O1AA_GC0Lu4RQ",
+      "Authorization": "Bearer sb_publishable_meUYwZlVSzp27MWFA2O1AA_GC0Lu4RQ"
+    },
+    muteHttpExceptions: true
+  };
+  try {
+    const response = UrlFetchApp.fetch(url, options);
+    Logger.log("Supabase Keep-Alive Response: " + response.getResponseCode() + " " + response.getContentText());
+  } catch (err) {
+    Logger.log("Supabase Keep-Alive Error: " + err.toString());
+  }
+}

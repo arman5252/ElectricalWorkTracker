@@ -6,6 +6,7 @@ import {
   getSupabaseClient, 
   fetchAllCablesFromSupabase, 
   updateCableInSupabase, 
+  bulkSeedCablesToSupabase,
   mapDbRowToCableEntry 
 } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
@@ -32,6 +33,8 @@ interface AppContextType {
   currentUser: AppUser | null;
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
+  isImportModalOpen: boolean;
+  setIsImportModalOpen: (open: boolean) => void;
   login: (user: AppUser) => void;
   logout: () => void;
   canEdit: boolean;
@@ -75,6 +78,8 @@ interface AppContextType {
   updateCommissioningStatus: (id: string, status: CommissioningStatus, remarks?: string) => void;
   updateApprovers: (id: string, level: 1 | 2 | 3, name: string) => void;
   updateCable: (id: string, updates: Partial<CableEntry>) => void;
+  addSingleCable: (cable: CableEntry, saveToSupabase?: boolean) => Promise<boolean>;
+  bulkImportCables: (newCables: CableEntry[], mode?: 'append' | 'replace', saveToSupabase?: boolean) => Promise<number>;
   importSpreadsheetData: (newCables: CableEntry[]) => void;
   resetToOriginalSpreadsheet: () => void;
   updateSettings: (newSettings: Partial<ProjectSettings>) => void;
@@ -138,6 +143,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return null;
   });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const login = (user: AppUser) => {
     setCurrentUser(user);
@@ -461,6 +467,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Cable updated & saved to Supabase DB`, 'info');
   };
 
+  const addSingleCable = async (cable: CableEntry, saveToSupabase = true): Promise<boolean> => {
+    if (!canEdit) {
+      showToast('Authentication required: Please log in as Admin or Senior Engineer to add cables.', 'warning');
+      setIsLoginModalOpen(true);
+      return false;
+    }
+
+    setCables(prev => [cable, ...prev]);
+
+    if (saveToSupabase) {
+      const ok = await updateCableInSupabase(cable);
+      if (ok) {
+        showToast(`Cable "${cable.cableTag}" created & saved to Supabase!`, 'success');
+      } else {
+        showToast(`Cable "${cable.cableTag}" saved to local workspace.`, 'info');
+      }
+    } else {
+      showToast(`Cable "${cable.cableTag}" added to schedule.`, 'success');
+    }
+
+    return true;
+  };
+
+  const bulkImportCables = async (newCables: CableEntry[], mode: 'append' | 'replace' = 'append', saveToSupabase = true): Promise<number> => {
+    if (!canEdit) {
+      showToast('Authentication required: Please log in to import cables.', 'warning');
+      setIsLoginModalOpen(true);
+      return 0;
+    }
+
+    if (!newCables || newCables.length === 0) {
+      showToast('No cables found to import.', 'warning');
+      return 0;
+    }
+
+    if (mode === 'replace') {
+      setCables(newCables);
+    } else {
+      setCables(prev => {
+        const merged = [...prev];
+        for (const incoming of newCables) {
+          const existingIdx = merged.findIndex(c => c.id === incoming.id || (incoming.cableTag && c.cableTag === incoming.cableTag));
+          if (existingIdx >= 0) {
+            merged[existingIdx] = { ...merged[existingIdx], ...incoming };
+          } else {
+            merged.push(incoming);
+          }
+        }
+        return merged;
+      });
+    }
+
+    if (saveToSupabase) {
+      showToast(`Saving ${newCables.length} imported cables to Supabase database...`, 'info');
+      try {
+        const res = await bulkSeedCablesToSupabase(newCables);
+        if (res.success) {
+          showToast(`Successfully imported & saved ${res.count} cables into Supabase!`, 'success');
+        } else {
+          showToast(`Saved to workspace. Supabase notice: ${res.error}`, 'warning');
+        }
+      } catch (e: any) {
+        showToast(`Saved to workspace. Supabase error: ${e.message}`, 'warning');
+      }
+    } else {
+      showToast(`Successfully imported ${newCables.length} cables into local schedule!`, 'success');
+    }
+
+    return newCables.length;
+  };
+
   const importSpreadsheetData = (newCables: CableEntry[]) => {
     setCables(newCables);
     showToast(`Loaded ${newCables.length} cables from spreadsheet!`, 'success');
@@ -489,6 +566,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentUser,
       isLoginModalOpen,
       setIsLoginModalOpen,
+      isImportModalOpen,
+      setIsImportModalOpen,
       login,
       logout,
       canEdit,
@@ -523,6 +602,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateCommissioningStatus,
       updateApprovers,
       updateCable,
+      addSingleCable,
+      bulkImportCables,
       importSpreadsheetData,
       resetToOriginalSpreadsheet,
       updateSettings,

@@ -8,11 +8,12 @@ import { BoqView } from './components/BoqView';
 import { SpecsView } from './components/SpecsView';
 import { CableDetailModal } from './components/CableDetailModal';
 import { GoogleSyncModal } from './components/GoogleSyncModal';
+import { DataImportModal } from './components/DataImportModal';
 import { LoginModal } from './components/LoginModal';
 import { ToastContainer } from './components/ToastContainer';
 
 export const App: React.FC = () => {
-  const { activeView, isLoginModalOpen, setIsLoginModalOpen, currentUser } = useApp();
+  const { activeView, isLoginModalOpen, setIsLoginModalOpen, isImportModalOpen, setIsImportModalOpen, currentUser } = useApp();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
@@ -48,6 +49,14 @@ export const App: React.FC = () => {
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
       />
+
+      {/* Engineering Data Import & Manual Entry Modal (Admin Only) */}
+      {currentUser?.role === 'admin' && (
+        <DataImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+        />
+      )}
 
       {/* Toast Alerts */}
       <ToastContainer />

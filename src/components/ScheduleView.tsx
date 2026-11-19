@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Upload,
+  PlusCircle,
   Lock,
   ShieldCheck
 } from 'lucide-react';
@@ -128,7 +129,8 @@ export const ScheduleView: React.FC = () => {
     canEdit,
     canApproveLevel,
     currentUser,
-    setIsLoginModalOpen
+    setIsLoginModalOpen,
+    setIsImportModalOpen
   } = useApp();
 
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -436,18 +438,28 @@ export const ScheduleView: React.FC = () => {
               </button>
             )}
 
-            {/* Import Excel button - Visible ONLY for Admin Profile */}
+            {/* Import Data Center button (Excel, PDF, Manual) - Visible ONLY for Admin Profile */}
             {currentUser?.role === 'admin' && (
-              <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-sm cursor-pointer" title="Import Excel (Admin Only)">
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                title="Import Excel, PDF or Manual Cable Input (Admin Only)"
+              >
                 <Upload className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden sm:inline">Import Excel</span>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleImportExcel}
-                  className="hidden"
-                />
-              </label>
+                <span>Import Data</span>
+              </button>
+            )}
+
+            {/* Manual Quick Add Cable button - Visible ONLY for Admin Profile */}
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-xl text-xs transition-all active:scale-95 shadow-md shadow-amber-500/20"
+                title="Add Single Cable or Paste Data (Admin Only)"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Add Cable</span>
+              </button>
             )}
 
             {/* Export CSV button - Visible ONLY for logged-in profiles: Admin, Nayem, Mossadek, Fahad */}

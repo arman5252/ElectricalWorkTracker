@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ping-db": "node scripts/ping-db.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",
     "@tailwindcss/vite": "^4.1.18",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
+    "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "recharts": "^2.15.4",
