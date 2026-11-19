@@ -1,4 +1,4 @@
-import { CableEntry, CableStatus } from '../types';
+import { CableEntry, CableLayingStatus, CommissioningStatus, CableStatus } from '../types';
 
 export interface LiveSyncResult {
   success: boolean;
@@ -27,30 +27,83 @@ export function parseGvizResponse(rawText: string, scheduleType = 'LV Power Cabl
     return [];
   }
 
-  const rows = data.table.rows;
+  const cols = data.table.cols || [];
+  const rows = data.table.rows || [];
   const cables: CableEntry[] = [];
   let currentSection = 'A1 - Client PCC';
 
-  // Find header row or start from row 4
-  let dataStartIndex = 0;
-  for (let i = 0; i < Math.min(6, rows.length); i++) {
-    const rowCells = (rows[i].c || []).map((c: any) => (c && c.v !== null && c.v !== undefined ? String(c.v) : ''));
-    if (rowCells.some((val: string) => val.toUpperCase().includes('CABLE DESIGNATION') || val.toUpperCase().includes('DESIGNATION'))) {
-      dataStartIndex = i + 1;
+  // Gather column labels from cols and first few header rows
+  const colLabels: string[] = cols.map((col: any) => String(col.label || '').trim().toUpperCase());
+
+  let headerRowIndex = -1;
+  for (let i = 0; i < Math.min(8, rows.length); i++) {
+    const rowCells = (rows[i].c || []).map((c: any) => (c && c.v !== null && c.v !== undefined ? String(c.v).trim().toUpperCase() : ''));
+    if (rowCells.some((val: string) => val.includes('CABLE DESIGNATION') || val.includes('DESIGNATION') || val.includes('CABLE TAG'))) {
+      headerRowIndex = i;
+      // Merge labels from this row if cols didn't have them
+      rowCells.forEach((label: string, idx: number) => {
+        if (label && (!colLabels[idx] || colLabels[idx] === '')) {
+          colLabels[idx] = label;
+        }
+      });
       break;
     }
   }
 
+  const dataStartIndex = headerRowIndex !== -1 ? headerRowIndex + 1 : 0;
+
+  // Helper to find column index by keywords
+  const findIdx = (keywords: string[]) => {
+    return colLabels.findIndex(l => keywords.some(k => l.includes(k)));
+  };
+
+  const colIdx = {
+    sr: findIdx(['SR. NO', 'SR NO', 'SR#', 'SL']),
+    tag: findIdx(['CABLE DESIGNATION', 'DESIGNATION', 'CABLE TAG', 'TAG']),
+    fromLoc: findIdx(['FROM LOCATION', 'FROM (LOCATION)']),
+    fromEq: findIdx(['FROM EQUIPMENT', 'FROM (INSTRUMENT)', 'FROM INSTRUMENT']),
+    toLoc: findIdx(['TO LOCATION', 'TO (LOCATION)']),
+    toEq: findIdx(['TO EQUIPMENT', 'TO (INSTRUMENT)', 'TO INSTRUMENT']),
+    runs: findIdx(['NO. OF RUNS', 'NO. OF RUN', 'RUNS']),
+    size: findIdx(['CABLE SIZE', 'SIZE']),
+    type: findIdx(['CABLE TYPE', 'TYPE']),
+    desc: findIdx(['DESCRIPTION', 'SCOPE']),
+    // Exact 3 Workflow Stages
+    layingStatus: findIdx(['CABLE LAYING STATUS', 'LAYING STATUS', 'CABLE LAYING']),
+    layingRemarks: findIdx(['CABLE LAYING REMARKS', 'LAYING REMARKS']),
+    preStatus: findIdx(['PRE-COMMISSIONING STATUS', 'PRE-COMM STATUS', 'PRE COMMISSIONING']),
+    preRemarks: findIdx(['PRE-COMMISSIONING REMARKS', 'PRE-COMM REMARKS']),
+    commStatus: findIdx(['COMMISSIONING STATUS', 'COMM STATUS', 'COMMISSIONING']),
+    commRemarks: findIdx(['COMMISSIONING REMARKS', 'COMM REMARKS']),
+    // Approvers
+    naim: findIdx(['NAIM BHAI', 'APPROVE: NAIM']),
+    mosaddik: findIdx(['MOSADDIK BHAI', 'APPROVE: MOSADDIK']),
+    fahad: findIdx(['FAHAD SIR', 'APPROVE: FAHAD'])
+  };
+
+  // Fallbacks if header text wasn't found in cols
+  if (colIdx.tag === -1) colIdx.tag = 1;
+  if (colIdx.sr === -1) colIdx.sr = 0;
+  if (colIdx.fromLoc === -1) colIdx.fromLoc = 2;
+  if (colIdx.fromEq === -1) colIdx.fromEq = 3;
+  if (colIdx.toLoc === -1) colIdx.toLoc = 4;
+  if (colIdx.toEq === -1) colIdx.toEq = 5;
+  if (colIdx.runs === -1) colIdx.runs = 6;
+  if (colIdx.size === -1) colIdx.size = 7;
+  if (colIdx.type === -1) colIdx.type = 8;
+  if (colIdx.desc === -1) colIdx.desc = 9;
+
   for (let i = dataStartIndex; i < rows.length; i++) {
     const c = rows[i].c || [];
     const getVal = (idx: number) => {
+      if (idx === -1 || idx >= c.length) return '';
       const cell = c[idx];
       if (!cell || cell.v === null || cell.v === undefined) return '';
       return String(cell.v).trim();
     };
 
-    const sr = getVal(0);
-    const tag = getVal(1);
+    const sr = getVal(colIdx.sr);
+    const tag = getVal(colIdx.tag);
 
     // Section header detection (e.g. A1, B1, B2...)
     if (sr === 'A1' || sr === 'B1' || sr === 'B2' || sr === 'B3' || sr === 'B4' || sr === 'C1') {
@@ -58,24 +111,40 @@ export function parseGvizResponse(rawText: string, scheduleType = 'LV Power Cabl
       continue;
     }
 
-    if (!tag || tag.toUpperCase() === 'CABLE DESIGNATION') continue;
+    if (!tag || tag.toUpperCase().includes('CABLE DESIGNATION') || tag.toUpperCase() === 'TAG') continue;
 
-    const fromLoc = getVal(2);
-    const fromEq = getVal(3);
-    const toLoc = getVal(4);
-    const toEq = getVal(5);
-    const runsVal = parseInt(getVal(6) || '1', 10);
+    const fromLoc = getVal(colIdx.fromLoc);
+    const fromEq = getVal(colIdx.fromEq);
+    const toLoc = getVal(colIdx.toLoc);
+    const toEq = getVal(colIdx.toEq);
+    const runsVal = parseInt(getVal(colIdx.runs) || '1', 10);
     const runs = isNaN(runsVal) ? 1 : runsVal;
-    const cableSize = getVal(7);
-    const cableType = getVal(8);
-    const desc = getVal(9);
-    const statusVal = (getVal(10) || 'Installed') as CableStatus;
+    const cableSize = getVal(colIdx.size);
+    const cableType = getVal(colIdx.type);
+    const desc = getVal(colIdx.desc);
+
+    // Dynamic Phase & Approver resolution
+    const rawLaying = getVal(colIdx.layingStatus);
+    const layingStatus: CableLayingStatus = rawLaying.includes('Complete') ? 'Complete By VEL' :
+                                           rawLaying.includes('Progress') ? 'Progress' : 'Pending';
+
+    const rawPre = getVal(colIdx.preStatus);
+    const preCommissioningStatus: CommissioningStatus = rawPre.includes('Complete') ? 'Complete By Bargen' :
+                                                        rawPre.includes('Progress') ? 'Progress' : 'Pending';
+
+    const rawComm = getVal(colIdx.commStatus);
+    const commissioningStatus: CommissioningStatus = rawComm.includes('Complete') ? 'Complete By Bargen' :
+                                                    rawComm.includes('Progress') ? 'Progress' : 'Pending';
+
+    const approvedBy1 = colIdx.naim !== -1 && getVal(colIdx.naim) ? 'Naim Bhai' : undefined;
+    const approvedBy2 = colIdx.mosaddik !== -1 && getVal(colIdx.mosaddik) ? 'Mosaddik Bhai' : undefined;
+    const approvedBy3 = colIdx.fahad !== -1 && getVal(colIdx.fahad) ? 'Fahad Sir' : undefined;
 
     cables.push({
       id: `CABLE-LIVE-${i + 1}`,
       scheduleType: scheduleType,
       section: currentSection,
-      srNo: sr,
+      srNo: sr || String(i + 1),
       cableTag: tag,
       fromLocation: fromLoc,
       fromEquipment: fromEq,
@@ -85,8 +154,20 @@ export function parseGvizResponse(rawText: string, scheduleType = 'LV Power Cabl
       cableSize: cableSize,
       cableType: cableType,
       description: desc,
-      status: ['Pending', 'Pulled', 'Terminated', 'Tested', 'Installed'].includes(statusVal) ? statusVal : 'Installed',
-      voltage: currentSection.includes('24V') ? '24V DC' : '415V AC / LV'
+      voltage: currentSection.includes('24V') ? '24V DC' : '415V AC / LV',
+      // Workflow Phases
+      cableLayingStatus,
+      cableLayingRemarks: getVal(colIdx.layingRemarks),
+      preCommissioningStatus,
+      preCommissioningRemarks: getVal(colIdx.preRemarks),
+      commissioningStatus,
+      commissioningRemarks: getVal(colIdx.commRemarks),
+      // Approvers
+      approvedBy1,
+      approvedBy2,
+      approvedBy3,
+      status: commissioningStatus === 'Complete By Bargen' ? 'Complete By Bargen' : layingStatus,
+      updatedAt: new Date().toISOString()
     });
   }
 
@@ -108,7 +189,7 @@ export async function fetchLiveSheetData(
     try {
       const url = new URL(webAppUrl.trim());
       url.searchParams.set('action', 'getCables');
-      url.searchParams.set('_t', Date.now().toString()); // prevent caching
+      url.searchParams.set('_t', Date.now().toString());
 
       const res = await fetch(url.toString(), {
         method: 'GET',
@@ -134,7 +215,6 @@ export async function fetchLiveSheetData(
 
   // 2. Direct Google Sheets gviz API fetch
   try {
-    // Extract Sheet ID
     const match = spreadsheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
     const sheetId = match ? match[1] : '1vGcIIdzGF8PaF1F2iCzwoRZh0WcSLuAKiJxiOTsDDIk';
 
@@ -151,9 +231,8 @@ export async function fetchLiveSheetData(
     }
 
     const text = await res.text();
-    // If Google redirected to login HTML
     if (text.includes('<!DOCTYPE html>') || text.includes('ServiceLogin')) {
-      throw new Error('Google Sheet requires sharing permissions: Set "Anyone with the link can view", or connect Google Apps Script Web App.');
+      throw new Error('Google Sheet is Restricted. In Google Sheet, click Share and set to "Anyone with the link can view", or connect Google Apps Script Web App.');
     }
 
     const parsedCables = parseGvizResponse(text);

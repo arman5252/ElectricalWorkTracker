@@ -189,6 +189,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
 
           {/* Settings button */}
           <button
+            id="open-settings-button"
             onClick={onOpenSettings}
             title="Configure Real-Time Sync & Google Cloud DB"
             className="p-1.5 text-slate-400 hover:text-white bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 rounded-lg transition-colors"

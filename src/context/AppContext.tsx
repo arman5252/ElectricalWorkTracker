@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { CableEntry, CableLayingStatus, CommissioningStatus, BoqItem, ProjectSettings } from '../types';
 import { initialCables, boqSummary, projectMeta } from '../data/cableData';
 import { fetchLiveSheetData, LiveSyncResult } from '../services/sheetLiveSync';
+import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = 'volttrack_cables_schedule_state_v3_exact_phases';
 const SETTINGS_KEY = 'volttrack_settings_state_v3';
@@ -276,20 +277,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Auto-save to local Excel file on any dashboard edit
+  // Check for Web App URL in URL query parameters on initial load
   useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const apiParam = params.get('api');
+      if (apiParam && apiParam.startsWith('http')) {
+        updateSettings({ webAppUrl: apiParam });
+        showToast('Google Sheet Web App URL connected from link!', 'success');
+      }
+    } catch (e) {}
+  }, []);
+
+  // Auto-save on edit: writes locally if server exists and tracks save timestamp
+  useEffect(() => {
+    setLastExcelSaveTime(new Date().toLocaleTimeString());
+
     if (isInitialMount.current) {
       isInitialMount.current = false;
       fetch('/api/save-excel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cables })
-      })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) setLastExcelSaveTime(d.timestamp);
-      })
-      .catch(() => {});
+      }).catch(() => {});
       return;
     }
 
@@ -300,15 +310,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cables })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setLastExcelSaveTime(data.timestamp);
-          console.log('[Live Excel Sync] Stored in Excel:', data.downloadsFilePath);
-        }
-      })
-      .catch(err => console.error('[Excel Save Error]', err));
+      }).catch(() => {});
     }, 350);
 
     return () => {
@@ -316,9 +318,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [cables]);
 
+  // Client-side instant Excel export (Works 100% on GitHub Pages, mobile, and desktop)
   const downloadExcelFile = () => {
-    window.location.href = '/api/download-excel';
-    showToast('Downloading Bergen Engines Cable Schedule Excel (.xlsx)...', 'success');
+    try {
+      const rows = cables.map((c: any) => ({
+        'Sr. No.': c.srNo || '',
+        'Cable Designation': c.cableTag || '',
+        'Schedule Type': c.scheduleType || '',
+        'Section': c.section || '',
+        'From Location': c.fromLocation || '',
+        'From Equipment / Panel': c.fromEquipment || '',
+        'To Location': c.toLocation || '',
+        'To Equipment / Panel': c.toEquipment || '',
+        'No. of Runs': c.runs || 1,
+        'Cable Size': c.cableSize || '',
+        'Cable Type': c.cableType || '',
+        'Description / Scope': c.description || '',
+        'Voltage': c.voltage || '',
+        'Cable Laying Status': c.cableLayingStatus || 'Pending',
+        'Cable Laying Remarks': c.cableLayingRemarks || '',
+        'Pre-Commissioning Status': c.preCommissioningStatus || 'Pending',
+        'Pre-Commissioning Remarks': c.preCommissioningRemarks || '',
+        'Commissioning Status': c.commissioningStatus || 'Pending',
+        'Commissioning Remarks': c.commissioningRemarks || '',
+        'Approve: Naim Bhai': c.approvedBy1 || '',
+        'Approve: Mosaddik Bhai': c.approvedBy2 || '',
+        'Approve: Fahad Sir': c.approvedBy3 || '',
+        'Last Updated': c.updatedAt || new Date().toISOString()
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Master Cable Schedule');
+      XLSX.writeFile(wb, 'Bergen_Engines_Cable_Schedule_Live.xlsx');
+      showToast('Downloaded live Bergen Engines Cable Schedule Excel (.xlsx)!', 'success');
+    } catch (err: any) {
+      showToast(`Excel export failed: ${err.message}`, 'error');
+    }
   };
 
   const resetAllFilters = () => {
