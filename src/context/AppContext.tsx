@@ -182,27 +182,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setCables(prevCables => {
         const prevMap = new Map(prevCables.map(c => [c.cableTag, c]));
-        const updated = res.cables!.map(incoming => {
+        return res.cables!.map(incoming => {
           const existing = prevMap.get(incoming.cableTag);
-          if (existing) {
-            return {
-              ...incoming,
-              cableLayingStatus: existing.cableLayingStatus || incoming.cableLayingStatus || 'Complete By VEL',
-              preCommissioningStatus: existing.preCommissioningStatus || incoming.preCommissioningStatus || 'Progress',
-              commissioningStatus: existing.commissioningStatus || incoming.commissioningStatus || 'Pending',
-              approvedBy1: existing.approvedBy1 || incoming.approvedBy1,
-              approvedBy2: existing.approvedBy2 || incoming.approvedBy2,
-              approvedBy3: existing.approvedBy3 || incoming.approvedBy3,
-              drawingUrl: existing.drawingUrl || incoming.drawingUrl,
-              notes: existing.notes || incoming.notes
-            };
-          }
-          return incoming;
+          return {
+            ...incoming,
+            drawingUrl: incoming.drawingUrl || existing?.drawingUrl,
+            notes: incoming.notes || existing?.notes
+          };
         });
-
-        const incomingTags = new Set(res.cables!.map(c => c.cableTag));
-        const nonOverlapping = prevCables.filter(c => !incomingTags.has(c.cableTag));
-        return [...updated, ...nonOverlapping];
       });
 
       if (!silent) {

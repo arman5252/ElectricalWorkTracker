@@ -1,4 +1,4 @@
-import { CableEntry, CableLayingStatus, CommissioningStatus, CableStatus } from '../types';
+import { CableEntry, CableLayingStatus, CommissioningStatus } from '../types';
 
 export interface LiveSyncResult {
   success: boolean;
@@ -8,175 +8,28 @@ export interface LiveSyncResult {
   timestamp: string;
 }
 
-/**
- * Parse Google Visualization API (gviz) JSON response
- */
-export function parseGvizResponse(rawText: string, scheduleType = 'LV Power Cable Schedule'): CableEntry[] {
-  // Format is: /*O_o*/\ngoogle.visualization.Query.setResponse({...});
-  const startIdx = rawText.indexOf('{');
-  const endIdx = rawText.lastIndexOf('}');
-
-  if (startIdx === -1 || endIdx === -1) {
-    throw new Error('Invalid Google Visualization response format');
+function normalizeStatus(val: string, type: 'laying' | 'pre' | 'comm'): string {
+  const v = String(val || '').trim();
+  if (v === 'Status' || !v) return 'Pending';
+  if (type === 'laying') {
+    if (v.includes('VEL') || v.includes('Complete')) return 'Complete By VEL';
+    if (v.includes('Progress')) return 'Progress';
+    return 'Pending';
+  } else {
+    if (v.includes('Bargen') || v.includes('Complete')) return 'Complete By Bargen';
+    if (v.includes('Progress')) return 'Progress';
+    return 'Pending';
   }
+}
 
-  const jsonStr = rawText.substring(startIdx, endIdx + 1);
-  const data = JSON.parse(jsonStr);
-
-  if (!data.table || !data.table.rows) {
-    return [];
-  }
-
-  const cols = data.table.cols || [];
-  const rows = data.table.rows || [];
-  const cables: CableEntry[] = [];
-  let currentSection = 'A1 - Client PCC';
-
-  // Gather column labels from cols and first few header rows
-  const colLabels: string[] = cols.map((col: any) => String(col.label || '').trim().toUpperCase());
-
-  let headerRowIndex = -1;
-  for (let i = 0; i < Math.min(8, rows.length); i++) {
-    const rowCells = (rows[i].c || []).map((c: any) => (c && c.v !== null && c.v !== undefined ? String(c.v).trim().toUpperCase() : ''));
-    if (rowCells.some((val: string) => val.includes('CABLE DESIGNATION') || val.includes('DESIGNATION') || val.includes('CABLE TAG'))) {
-      headerRowIndex = i;
-      // Merge labels from this row if cols didn't have them
-      rowCells.forEach((label: string, idx: number) => {
-        if (label && (!colLabels[idx] || colLabels[idx] === '')) {
-          colLabels[idx] = label;
-        }
-      });
-      break;
-    }
-  }
-
-  const dataStartIndex = headerRowIndex !== -1 ? headerRowIndex + 1 : 0;
-
-  // Helper to find column index by keywords
-  const findIdx = (keywords: string[]) => {
-    return colLabels.findIndex(l => keywords.some(k => l.includes(k)));
-  };
-
-  const colIdx = {
-    sr: findIdx(['SR. NO', 'SR NO', 'SR#', 'SL']),
-    tag: findIdx(['CABLE DESIGNATION', 'DESIGNATION', 'CABLE TAG', 'TAG']),
-    fromLoc: findIdx(['FROM LOCATION', 'FROM (LOCATION)']),
-    fromEq: findIdx(['FROM EQUIPMENT', 'FROM (INSTRUMENT)', 'FROM INSTRUMENT']),
-    toLoc: findIdx(['TO LOCATION', 'TO (LOCATION)']),
-    toEq: findIdx(['TO EQUIPMENT', 'TO (INSTRUMENT)', 'TO INSTRUMENT']),
-    runs: findIdx(['NO. OF RUNS', 'NO. OF RUN', 'RUNS']),
-    size: findIdx(['CABLE SIZE', 'SIZE']),
-    type: findIdx(['CABLE TYPE', 'TYPE']),
-    desc: findIdx(['DESCRIPTION', 'SCOPE']),
-    // Exact 3 Workflow Stages
-    layingStatus: findIdx(['CABLE LAYING STATUS', 'LAYING STATUS', 'CABLE LAYING']),
-    layingRemarks: findIdx(['CABLE LAYING REMARKS', 'LAYING REMARKS']),
-    preStatus: findIdx(['PRE-COMMISSIONING STATUS', 'PRE-COMM STATUS', 'PRE COMMISSIONING']),
-    preRemarks: findIdx(['PRE-COMMISSIONING REMARKS', 'PRE-COMM REMARKS']),
-    commStatus: findIdx(['COMMISSIONING STATUS', 'COMM STATUS', 'COMMISSIONING']),
-    commRemarks: findIdx(['COMMISSIONING REMARKS', 'COMM REMARKS']),
-    // Approvers
-    naim: findIdx(['NAIM BHAI', 'APPROVE: NAIM']),
-    mosaddik: findIdx(['MOSADDIK BHAI', 'APPROVE: MOSADDIK']),
-    fahad: findIdx(['FAHAD SIR', 'APPROVE: FAHAD'])
-  };
-
-  // Fallbacks if header text wasn't found in cols
-  if (colIdx.tag === -1) colIdx.tag = 1;
-  if (colIdx.sr === -1) colIdx.sr = 0;
-  if (colIdx.fromLoc === -1) colIdx.fromLoc = 2;
-  if (colIdx.fromEq === -1) colIdx.fromEq = 3;
-  if (colIdx.toLoc === -1) colIdx.toLoc = 4;
-  if (colIdx.toEq === -1) colIdx.toEq = 5;
-  if (colIdx.runs === -1) colIdx.runs = 6;
-  if (colIdx.size === -1) colIdx.size = 7;
-  if (colIdx.type === -1) colIdx.type = 8;
-  if (colIdx.desc === -1) colIdx.desc = 9;
-
-  for (let i = dataStartIndex; i < rows.length; i++) {
-    const c = rows[i].c || [];
-    const getVal = (idx: number) => {
-      if (idx === -1 || idx >= c.length) return '';
-      const cell = c[idx];
-      if (!cell || cell.v === null || cell.v === undefined) return '';
-      return String(cell.v).trim();
-    };
-
-    const sr = getVal(colIdx.sr);
-    const tag = getVal(colIdx.tag);
-
-    // Section header detection (e.g. A1, B1, B2...)
-    if (sr === 'A1' || sr === 'B1' || sr === 'B2' || sr === 'B3' || sr === 'B4' || sr === 'C1') {
-      currentSection = tag ? `${sr} - ${tag}` : sr;
-      continue;
-    }
-
-    if (!tag || tag.toUpperCase().includes('CABLE DESIGNATION') || tag.toUpperCase() === 'TAG') continue;
-
-    const fromLoc = getVal(colIdx.fromLoc);
-    const fromEq = getVal(colIdx.fromEq);
-    const toLoc = getVal(colIdx.toLoc);
-    const toEq = getVal(colIdx.toEq);
-    const runsVal = parseInt(getVal(colIdx.runs) || '1', 10);
-    const runs = isNaN(runsVal) ? 1 : runsVal;
-    const cableSize = getVal(colIdx.size);
-    const cableType = getVal(colIdx.type);
-    const desc = getVal(colIdx.desc);
-
-    // Dynamic Phase & Approver resolution
-    const rawLaying = getVal(colIdx.layingStatus);
-    const layingStatus: CableLayingStatus = rawLaying.includes('Complete') ? 'Complete By VEL' :
-                                           rawLaying.includes('Progress') ? 'Progress' : 'Pending';
-
-    const rawPre = getVal(colIdx.preStatus);
-    const preCommissioningStatus: CommissioningStatus = rawPre.includes('Complete') ? 'Complete By Bargen' :
-                                                        rawPre.includes('Progress') ? 'Progress' : 'Pending';
-
-    const rawComm = getVal(colIdx.commStatus);
-    const commissioningStatus: CommissioningStatus = rawComm.includes('Complete') ? 'Complete By Bargen' :
-                                                    rawComm.includes('Progress') ? 'Progress' : 'Pending';
-
-    const approvedBy1 = colIdx.naim !== -1 && getVal(colIdx.naim) ? 'Naim Bhai' : undefined;
-    const approvedBy2 = colIdx.mosaddik !== -1 && getVal(colIdx.mosaddik) ? 'Mosaddik Bhai' : undefined;
-    const approvedBy3 = colIdx.fahad !== -1 && getVal(colIdx.fahad) ? 'Fahad Sir' : undefined;
-
-    cables.push({
-      id: `CABLE-LIVE-${i + 1}`,
-      scheduleType: scheduleType,
-      section: currentSection,
-      srNo: sr || String(i + 1),
-      cableTag: tag,
-      fromLocation: fromLoc,
-      fromEquipment: fromEq,
-      toLocation: toLoc,
-      toEquipment: toEq,
-      runs: runs,
-      cableSize: cableSize,
-      cableType: cableType,
-      description: desc,
-      voltage: currentSection.includes('24V') ? '24V DC' : '415V AC / LV',
-      // Workflow Phases
-      cableLayingStatus,
-      cableLayingRemarks: getVal(colIdx.layingRemarks),
-      preCommissioningStatus,
-      preCommissioningRemarks: getVal(colIdx.preRemarks),
-      commissioningStatus,
-      commissioningRemarks: getVal(colIdx.commRemarks),
-      // Approvers
-      approvedBy1,
-      approvedBy2,
-      approvedBy3,
-      status: commissioningStatus === 'Complete By Bargen' ? 'Complete By Bargen' : layingStatus,
-      updatedAt: new Date().toISOString()
-    });
-  }
-
-  return cables;
+function cleanRemarks(val: string): string {
+  const v = String(val || '').trim();
+  if (v.toUpperCase() === 'REMARKS' || v === 'null' || v === 'undefined') return '';
+  return v;
 }
 
 /**
- * Fetch live data from Google Sheets in real-time
- * Tries Apps Script Web App first (if configured), then direct gviz API endpoint.
+ * Fetch and parse both sheets (LV Power and Control Cables) from Google Sheet
  */
 export async function fetchLiveSheetData(
   spreadsheetUrl: string,
@@ -184,7 +37,7 @@ export async function fetchLiveSheetData(
 ): Promise<LiveSyncResult> {
   const now = new Date().toLocaleTimeString();
 
-  // 1. If Web App URL is present, use it for zero-CORS authenticated fetch
+  // 1. If Web App URL is present, use it for direct authenticated read
   if (webAppUrl && webAppUrl.trim()) {
     try {
       const url = new URL(webAppUrl.trim());
@@ -209,40 +62,150 @@ export async function fetchLiveSheetData(
         }
       }
     } catch (e: any) {
-      console.warn('Apps Script live fetch error, trying direct gviz:', e.message);
+      console.warn('Apps Script live fetch notice:', e.message);
     }
   }
 
-  // 2. Direct Google Sheets gviz API fetch
+  // 2. Direct Google Sheets gviz API live fetch (reads both LV Power and Control sheets)
   try {
     const match = spreadsheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
     const sheetId = match ? match[1] : '1vGcIIdzGF8PaF1F2iCzwoRZh0WcSLuAKiJxiOTsDDIk';
+    const baseUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&_t=${Date.now()}`;
 
-    const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&tq=&_t=${Date.now()}`;
+    const allCables: CableEntry[] = [];
 
-    const res = await fetch(gvizUrl, {
-      method: 'GET',
-      mode: 'cors',
-      cache: 'no-cache'
-    });
+    // --- SHEET 1: LV Power Cable Schedule ---
+    try {
+      const resLV = await fetch(`${baseUrl}&sheet=${encodeURIComponent('LV Power Cable Schedule')}`);
+      if (resLV.ok) {
+        const textLV = await resLV.text();
+        if (!textLV.includes('<!DOCTYPE html>') && textLV.includes('status":"ok"')) {
+          const s = textLV.indexOf('{');
+          const e = textLV.lastIndexOf('}');
+          const dataLV = JSON.parse(textLV.substring(s, e + 1));
+          const rows = dataLV.table?.rows || [];
+          let currentSection = 'A1 - Client PCC';
 
-    if (!res.ok) {
-      throw new Error(`Google Sheets responded with HTTP ${res.status}`);
+          rows.forEach((r: any, idx: number) => {
+            const c = r.c || [];
+            const getV = (i: number) => (c[i] && c[i].v !== null && c[i].v !== undefined) ? String(c[i].v).trim() : '';
+            const sr = getV(0);
+            const tag = getV(1);
+
+            if (['A1', 'B1', 'B2', 'B3', 'B4', 'C1'].includes(sr)) {
+              currentSection = tag ? `${sr} - ${tag}` : sr;
+              return;
+            }
+            if (!tag || tag.toUpperCase().includes('CABLE DESIGNATION') || tag.toUpperCase() === 'TAG') return;
+
+            const layingRaw = getV(10);
+            const preRaw = getV(12);
+            const commRaw = getV(14);
+            const approveRaw = getV(16);
+
+            allCables.push({
+              id: `LV-${idx + 1}`,
+              scheduleType: 'LV Power Cable Schedule',
+              section: currentSection,
+              srNo: sr || String(idx + 1),
+              cableTag: tag,
+              fromLocation: getV(2),
+              fromEquipment: getV(3),
+              toLocation: getV(4),
+              toEquipment: getV(5),
+              runs: parseInt(getV(6) || '1', 10) || 1,
+              cableSize: getV(7),
+              cableType: getV(8),
+              description: getV(9),
+              cableLayingStatus: normalizeStatus(layingRaw, 'laying') as CableLayingStatus,
+              cableLayingRemarks: cleanRemarks(getV(11)),
+              preCommissioningStatus: normalizeStatus(preRaw, 'pre') as CommissioningStatus,
+              preCommissioningRemarks: cleanRemarks(getV(13)),
+              commissioningStatus: normalizeStatus(commRaw, 'comm') as CommissioningStatus,
+              commissioningRemarks: cleanRemarks(getV(15)),
+              approvedBy1: approveRaw.includes('Naim') ? 'Naim Bhai' : undefined,
+              approvedBy2: approveRaw.includes('Mosaddik') ? 'Mosaddik Bhai' : undefined,
+              approvedBy3: approveRaw.includes('Fahad') ? 'Fahad Sir' : undefined,
+              voltage: currentSection.includes('24V') ? '24V DC' : '415V AC / LV',
+              status: normalizeStatus(commRaw, 'comm') as any,
+              updatedAt: new Date().toISOString()
+            });
+          });
+        }
+      }
+    } catch (e: any) {
+      console.warn('LV Sheet gviz fetch notice:', e.message);
     }
 
-    const text = await res.text();
-    if (text.includes('<!DOCTYPE html>') || text.includes('ServiceLogin')) {
-      throw new Error('Google Sheet is Restricted. In Google Sheet, click Share and set to "Anyone with the link can view", or connect Google Apps Script Web App.');
+    // --- SHEET 2: Control Cable Schedule ---
+    try {
+      const resCtrl = await fetch(`${baseUrl}&sheet=${encodeURIComponent('Control Cable Schedule')}`);
+      if (resCtrl.ok) {
+        const textCtrl = await resCtrl.text();
+        if (!textCtrl.includes('<!DOCTYPE html>') && textCtrl.includes('status":"ok"')) {
+          const s = textCtrl.indexOf('{');
+          const e = textCtrl.lastIndexOf('}');
+          const dataCtrl = JSON.parse(textCtrl.substring(s, e + 1));
+          const rows = dataCtrl.table?.rows || [];
+
+          rows.forEach((r: any, idx: number) => {
+            const c = r.c || [];
+            const getV = (i: number) => (c[i] && c[i].v !== null && c[i].v !== undefined) ? String(c[i].v).trim() : '';
+            const sec = getV(0);
+            const sr = getV(1);
+            const tag = getV(2);
+
+            // Skip header rows if tag is column label or sr is header
+            if (!tag || tag.toUpperCase() === 'CABLE DESIGNATION' || sr === 'Sr. No.') return;
+
+            const layingRaw = getV(13);
+            const preRaw = getV(15);
+            const commRaw = getV(17);
+            const app1 = getV(19);
+            const app2 = getV(20);
+            const app3 = getV(21);
+
+            allCables.push({
+              id: `CTRL-${idx + 1}`,
+              scheduleType: 'Control Cable Schedule',
+              section: sec || 'Control & Protection',
+              srNo: sr || String(idx + 1),
+              cableTag: tag,
+              fromLocation: getV(3),
+              fromEquipment: getV(4),
+              toLocation: getV(5),
+              toEquipment: getV(6),
+              runs: parseInt(getV(8) || '1', 10) || 1,
+              cableSize: getV(9),
+              cableType: getV(10),
+              description: getV(11),
+              cableLayingStatus: normalizeStatus(layingRaw, 'laying') as CableLayingStatus,
+              cableLayingRemarks: cleanRemarks(getV(14)),
+              preCommissioningStatus: normalizeStatus(preRaw, 'pre') as CommissioningStatus,
+              preCommissioningRemarks: cleanRemarks(getV(16)),
+              commissioningStatus: normalizeStatus(commRaw, 'comm') as CommissioningStatus,
+              commissioningRemarks: cleanRemarks(getV(18)),
+              approvedBy1: app1 && (app1.includes('Naim') || app1.includes('Yes')) ? 'Naim Bhai' : undefined,
+              approvedBy2: app2 && (app2.includes('Mosaddik') || app2.includes('Yes')) ? 'Mosaddik Bhai' : undefined,
+              approvedBy3: app3 && (app3.includes('Fahad') || app3.includes('Yes')) ? 'Fahad Sir' : undefined,
+              voltage: 'Control / 110V',
+              status: normalizeStatus(commRaw, 'comm') as any,
+              updatedAt: new Date().toISOString()
+            });
+          });
+        }
+      }
+    } catch (e: any) {
+      console.warn('Control Sheet gviz fetch notice:', e.message);
     }
 
-    const parsedCables = parseGvizResponse(text);
-    if (parsedCables.length === 0) {
-      throw new Error('Connected to Google Sheet, but no cable data rows were found.');
+    if (allCables.length === 0) {
+      throw new Error('Connected to Google Sheet, but no cable rows could be parsed.');
     }
 
     return {
       success: true,
-      cables: parsedCables,
+      cables: allCables,
       source: 'gviz',
       timestamp: now
     };
