@@ -11,7 +11,7 @@ import {
 } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
 
-const STORAGE_KEY = 'volttrack_cables_schedule_state_v3_exact_phases';
+const STORAGE_KEY = 'volttrack_cables_schedule_state_v4_uploaded';
 const SETTINGS_KEY = 'volttrack_settings_state_v3';
 
 interface Toast {
