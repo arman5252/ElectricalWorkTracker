@@ -1,6 +1,16 @@
-export type CableLayingStatus = 'Complete By VEL' | 'Progress' | 'Pending';
-export type CommissioningStatus = 'Complete By Bargen' | 'Progress' | 'Pending';
-export type CableStatus = CableLayingStatus | CommissioningStatus;
+export type CableStageStatus = 
+  | 'Complete By VEL' 
+  | 'Complete By Bargen' 
+  | 'Progress' 
+  | 'Pending' 
+  | 'Scope of Bargen' 
+  | 'Scope of VEL' 
+  | 'Out of Scope' 
+  | 'N/A';
+
+export type CableLayingStatus = CableStageStatus;
+export type CommissioningStatus = CableStageStatus;
+export type CableStatus = CableStageStatus;
 
 export interface CableEntry {
   id: string;

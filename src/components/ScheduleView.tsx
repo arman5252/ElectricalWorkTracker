@@ -21,44 +21,48 @@ import {
   Upload
 } from 'lucide-react';
 
+export const getPillStyle = (status: string) => {
+  switch (status) {
+    case 'Complete By VEL':
+      return 'bg-[#10b981] hover:bg-[#059669] text-white shadow-sm font-bold';
+    case 'Complete By Bargen':
+      return 'bg-[#047857] hover:bg-[#065f46] text-white shadow-sm font-bold';
+    case 'Progress':
+      return 'bg-[#dcfce7] hover:bg-[#bbf7d0] text-[#14532d] shadow-sm font-extrabold';
+    case 'Scope of Bargen':
+      return 'bg-[#0891b2] hover:bg-[#0e7490] text-white shadow-sm font-bold';
+    case 'Scope of VEL':
+      return 'bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-sm font-bold';
+    case 'Out of Scope':
+      return 'bg-[#475569] hover:bg-[#334155] text-slate-100 shadow-sm font-medium';
+    case 'N/A':
+      return 'bg-[#334155] hover:bg-[#1e293b] text-slate-300 shadow-sm font-medium';
+    case 'Pending':
+    default:
+      return 'bg-[#991b1b] hover:bg-[#7f1d1d] text-white shadow-sm font-bold';
+  }
+};
+
 export const StatusPill: React.FC<{
   type: 'laying' | 'pre' | 'comm';
   status: string;
   onChange: (newStatus: any) => void;
-}> = ({ type, status, onChange }) => {
-  const getPillStyle = () => {
-    switch (status) {
-      case 'Complete By VEL':
-        return 'bg-[#10b981] hover:bg-[#059669] text-white shadow-sm';
-      case 'Complete By Bargen':
-        return 'bg-[#047857] hover:bg-[#065f46] text-white shadow-sm';
-      case 'Progress':
-        return 'bg-[#dcfce7] hover:bg-[#bbf7d0] text-[#14532d] shadow-sm font-extrabold';
-      case 'Pending':
-      default:
-        return 'bg-[#991b1b] hover:bg-[#7f1d1d] text-white shadow-sm';
-    }
-  };
-
-  const isLaying = type === 'laying';
-  const completeOption = isLaying ? 'Complete By VEL' : 'Complete By Bargen';
-
+}> = ({ status, onChange }) => {
   return (
     <div className="relative inline-block whitespace-nowrap shrink-0">
       <select
         value={status}
         onChange={(e) => onChange(e.target.value)}
-        className={`appearance-none cursor-pointer py-1 pl-3 pr-6 rounded-full text-[11px] font-bold tracking-tight border border-white/10 focus:outline-none transition-all whitespace-nowrap min-w-[140px] text-center ${getPillStyle()}`}
+        className={`appearance-none cursor-pointer py-1 pl-3 pr-6 rounded-full text-[11px] tracking-tight border border-white/10 focus:outline-none transition-all whitespace-nowrap min-w-[145px] text-center ${getPillStyle(status)}`}
       >
-        <option value={completeOption} className="bg-slate-900 text-white py-1">
-          {completeOption}
-        </option>
-        <option value="Progress" className="bg-slate-900 text-white py-1">
-          Progress
-        </option>
-        <option value="Pending" className="bg-slate-900 text-white py-1">
-          Pending
-        </option>
+        <option value="Complete By VEL" className="bg-slate-900 text-emerald-400 py-1 font-bold">✓ Complete By VEL</option>
+        <option value="Complete By Bargen" className="bg-slate-900 text-emerald-300 py-1 font-bold">✓ Complete By Bargen</option>
+        <option value="Progress" className="bg-slate-900 text-green-300 py-1 font-semibold">⏳ Progress</option>
+        <option value="Pending" className="bg-slate-900 text-rose-400 py-1 font-semibold">⏱ Pending</option>
+        <option value="Scope of Bargen" className="bg-slate-900 text-cyan-300 py-1 font-semibold">Scope of Bargen</option>
+        <option value="Scope of VEL" className="bg-slate-900 text-blue-300 py-1 font-semibold">Scope of VEL</option>
+        <option value="Out of Scope" className="bg-slate-900 text-slate-400 py-1 font-semibold">Out of Scope</option>
+        <option value="N/A" className="bg-slate-900 text-slate-400 py-1 font-semibold">N/A</option>
       </select>
       <ChevronDown className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${
         status === 'Progress' ? 'text-[#14532d]' : 'text-white/80'
@@ -539,8 +543,13 @@ export const ScheduleView: React.FC = () => {
               >
                 <option value="All">Laying: All</option>
                 <option value="Complete By VEL">Laying: Complete By VEL</option>
+                <option value="Complete By Bargen">Laying: Complete By Bargen</option>
                 <option value="Progress">Laying: Progress</option>
                 <option value="Pending">Laying: Pending</option>
+                <option value="Scope of Bargen">Laying: Scope of Bargen</option>
+                <option value="Scope of VEL">Laying: Scope of VEL</option>
+                <option value="Out of Scope">Laying: Out of Scope</option>
+                <option value="N/A">Laying: N/A</option>
               </select>
             </div>
 
@@ -553,8 +562,13 @@ export const ScheduleView: React.FC = () => {
               >
                 <option value="All">Pre-Comm: All</option>
                 <option value="Complete By Bargen">Pre-Comm: Complete By Bargen</option>
+                <option value="Complete By VEL">Pre-Comm: Complete By VEL</option>
                 <option value="Progress">Pre-Comm: Progress</option>
                 <option value="Pending">Pre-Comm: Pending</option>
+                <option value="Scope of Bargen">Pre-Comm: Scope of Bargen</option>
+                <option value="Scope of VEL">Pre-Comm: Scope of VEL</option>
+                <option value="Out of Scope">Pre-Comm: Out of Scope</option>
+                <option value="N/A">Pre-Comm: N/A</option>
               </select>
             </div>
 
@@ -567,8 +581,13 @@ export const ScheduleView: React.FC = () => {
               >
                 <option value="All">Comm: All</option>
                 <option value="Complete By Bargen">Comm: Complete By Bargen</option>
+                <option value="Complete By VEL">Comm: Complete By VEL</option>
                 <option value="Progress">Comm: Progress</option>
                 <option value="Pending">Comm: Pending</option>
+                <option value="Scope of Bargen">Comm: Scope of Bargen</option>
+                <option value="Scope of VEL">Comm: Scope of VEL</option>
+                <option value="Out of Scope">Comm: Out of Scope</option>
+                <option value="N/A">Comm: N/A</option>
               </select>
             </div>
 

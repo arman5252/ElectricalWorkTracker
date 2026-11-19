@@ -8,18 +8,20 @@ export interface LiveSyncResult {
   timestamp: string;
 }
 
-function normalizeStatus(val: string, type: 'laying' | 'pre' | 'comm'): string {
+function normalizeStatus(val: string): CableLayingStatus {
   const v = String(val || '').trim();
-  if (v === 'Status' || !v) return 'Pending';
-  if (type === 'laying') {
-    if (v.includes('VEL') || v.includes('Complete')) return 'Complete By VEL';
-    if (v.includes('Progress')) return 'Progress';
-    return 'Pending';
-  } else {
-    if (v.includes('Bargen') || v.includes('Complete')) return 'Complete By Bargen';
-    if (v.includes('Progress')) return 'Progress';
-    return 'Pending';
-  }
+  const up = v.toUpperCase();
+  if (!v || up === 'STATUS' || up === 'PENDING') return 'Pending';
+  if (up.includes('COMPLETE BY VEL')) return 'Complete By VEL';
+  if (up.includes('COMPLETE BY BARGEN') || up.includes('COMPLETE BY BERGEN')) return 'Complete By Bargen';
+  if (up.includes('SCOPE OF BARGEN') || up.includes('SCOPE OF BERGEN')) return 'Scope of Bargen';
+  if (up.includes('SCOPE OF VEL')) return 'Scope of VEL';
+  if (up.includes('OUT OF SCOPE') || up.includes('OUT SCOPE')) return 'Out of Scope';
+  if (up === 'N/A' || up === 'NA' || up === 'NOT APPLICABLE') return 'N/A';
+  if (up.includes('PROGRESS')) return 'Progress';
+  if (up.includes('VEL')) return 'Complete By VEL';
+  if (up.includes('BARGEN') || up.includes('BERGEN')) return 'Complete By Bargen';
+  return 'Pending';
 }
 
 function cleanRemarks(val: string): string {
@@ -88,17 +90,17 @@ export async function fetchLiveSheetData(
               cableSize: getV(7),
               cableType: getV(8),
               description: getV(9),
-              cableLayingStatus: normalizeStatus(layingRaw, 'laying') as CableLayingStatus,
+              cableLayingStatus: normalizeStatus(layingRaw),
               cableLayingRemarks: cleanRemarks(getV(11)),
-              preCommissioningStatus: normalizeStatus(preRaw, 'pre') as CommissioningStatus,
+              preCommissioningStatus: normalizeStatus(preRaw),
               preCommissioningRemarks: cleanRemarks(getV(13)),
-              commissioningStatus: normalizeStatus(commRaw, 'comm') as CommissioningStatus,
+              commissioningStatus: normalizeStatus(commRaw),
               commissioningRemarks: cleanRemarks(getV(15)),
               approvedBy1: approveRaw.includes('Naim') ? 'Naim Bhai' : undefined,
               approvedBy2: approveRaw.includes('Mosaddik') ? 'Mosaddik Bhai' : undefined,
               approvedBy3: approveRaw.includes('Fahad') ? 'Fahad Sir' : undefined,
               voltage: currentSection.includes('24V') ? '24V DC' : '415V AC / LV',
-              status: normalizeStatus(commRaw, 'comm') as any,
+              status: normalizeStatus(commRaw),
               updatedAt: new Date().toISOString()
             });
           });
@@ -150,17 +152,17 @@ export async function fetchLiveSheetData(
               cableSize: getV(9),
               cableType: getV(10),
               description: getV(11),
-              cableLayingStatus: normalizeStatus(layingRaw, 'laying') as CableLayingStatus,
+              cableLayingStatus: normalizeStatus(layingRaw),
               cableLayingRemarks: cleanRemarks(getV(14)),
-              preCommissioningStatus: normalizeStatus(preRaw, 'pre') as CommissioningStatus,
+              preCommissioningStatus: normalizeStatus(preRaw),
               preCommissioningRemarks: cleanRemarks(getV(16)),
-              commissioningStatus: normalizeStatus(commRaw, 'comm') as CommissioningStatus,
+              commissioningStatus: normalizeStatus(commRaw),
               commissioningRemarks: cleanRemarks(getV(18)),
               approvedBy1: app1 && (app1.includes('Naim') || app1.includes('Yes')) ? 'Naim Bhai' : undefined,
               approvedBy2: app2 && (app2.includes('Mosaddik') || app2.includes('Yes')) ? 'Mosaddik Bhai' : undefined,
               approvedBy3: app3 && (app3.includes('Fahad') || app3.includes('Yes')) ? 'Fahad Sir' : undefined,
               voltage: 'Control / 110V',
-              status: normalizeStatus(commRaw, 'comm') as any,
+              status: normalizeStatus(commRaw),
               updatedAt: new Date().toISOString()
             });
           });

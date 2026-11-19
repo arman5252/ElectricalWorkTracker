@@ -171,9 +171,14 @@ export const CableDetailModal: React.FC = () => {
                   onChange={(e) => setCableLayingStatus(e.target.value as CableLayingStatus)}
                   className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 font-semibold text-xs focus:outline-none focus:border-emerald-500"
                 >
-                  <option value="Complete By VEL">Complete By VEL</option>
-                  <option value="Progress">Progress</option>
-                  <option value="Pending">Pending</option>
+                  <option value="Complete By VEL">✓ Complete By VEL</option>
+                  <option value="Complete By Bargen">✓ Complete By Bargen</option>
+                  <option value="Progress">⏳ Progress</option>
+                  <option value="Pending">⏱ Pending</option>
+                  <option value="Scope of Bargen">Scope of Bargen</option>
+                  <option value="Scope of VEL">Scope of VEL</option>
+                  <option value="Out of Scope">Out of Scope</option>
+                  <option value="N/A">N/A</option>
                 </select>
               </div>
               <div>
@@ -200,9 +205,14 @@ export const CableDetailModal: React.FC = () => {
                   onChange={(e) => setPreCommissioningStatus(e.target.value as CommissioningStatus)}
                   className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 font-semibold text-xs focus:outline-none focus:border-emerald-500"
                 >
-                  <option value="Complete By Bargen">Complete By Bargen</option>
-                  <option value="Progress">Progress</option>
-                  <option value="Pending">Pending</option>
+                  <option value="Complete By Bargen">✓ Complete By Bargen</option>
+                  <option value="Complete By VEL">✓ Complete By VEL</option>
+                  <option value="Progress">⏳ Progress</option>
+                  <option value="Pending">⏱ Pending</option>
+                  <option value="Scope of Bargen">Scope of Bargen</option>
+                  <option value="Scope of VEL">Scope of VEL</option>
+                  <option value="Out of Scope">Out of Scope</option>
+                  <option value="N/A">N/A</option>
                 </select>
               </div>
               <div>
@@ -229,9 +239,14 @@ export const CableDetailModal: React.FC = () => {
                   onChange={(e) => setCommissioningStatus(e.target.value as CommissioningStatus)}
                   className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 font-semibold text-xs focus:outline-none focus:border-emerald-500"
                 >
-                  <option value="Complete By Bargen">Complete By Bargen</option>
-                  <option value="Progress">Progress</option>
-                  <option value="Pending">Pending</option>
+                  <option value="Complete By Bargen">✓ Complete By Bargen</option>
+                  <option value="Complete By VEL">✓ Complete By VEL</option>
+                  <option value="Progress">⏳ Progress</option>
+                  <option value="Pending">⏱ Pending</option>
+                  <option value="Scope of Bargen">Scope of Bargen</option>
+                  <option value="Scope of VEL">Scope of VEL</option>
+                  <option value="Out of Scope">Out of Scope</option>
+                  <option value="N/A">N/A</option>
                 </select>
               </div>
               <div>

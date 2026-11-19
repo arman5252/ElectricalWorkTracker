@@ -29,21 +29,21 @@ export const ScheduleStats: React.FC = () => {
   const total = cables.length;
 
   // 1. Cable Laying metrics
-  const velComplete = cables.filter(c => c.cableLayingStatus === 'Complete By VEL').length;
+  const velComplete = cables.filter(c => c.cableLayingStatus === 'Complete By VEL' || c.cableLayingStatus === 'Complete By Bargen').length;
   const velProgress = cables.filter(c => c.cableLayingStatus === 'Progress').length;
-  const velPending = cables.filter(c => c.cableLayingStatus === 'Pending').length;
+  const velPending = cables.filter(c => c.cableLayingStatus === 'Pending' || !c.cableLayingStatus).length;
   const velPercent = total > 0 ? Math.round((velComplete / total) * 100) : 0;
 
   // 2. Pre-Commissioning metrics
-  const preBargenComplete = cables.filter(c => c.preCommissioningStatus === 'Complete By Bargen').length;
+  const preBargenComplete = cables.filter(c => c.preCommissioningStatus === 'Complete By Bargen' || c.preCommissioningStatus === 'Complete By VEL').length;
   const preProgress = cables.filter(c => c.preCommissioningStatus === 'Progress').length;
-  const prePending = cables.filter(c => c.preCommissioningStatus === 'Pending').length;
+  const prePending = cables.filter(c => c.preCommissioningStatus === 'Pending' || !c.preCommissioningStatus).length;
   const prePercent = total > 0 ? Math.round((preBargenComplete / total) * 100) : 0;
 
   // 3. Commissioning metrics
-  const commBargenComplete = cables.filter(c => c.commissioningStatus === 'Complete By Bargen').length;
+  const commBargenComplete = cables.filter(c => c.commissioningStatus === 'Complete By Bargen' || c.commissioningStatus === 'Complete By VEL').length;
   const commProgress = cables.filter(c => c.commissioningStatus === 'Progress').length;
-  const commPending = cables.filter(c => c.commissioningStatus === 'Pending').length;
+  const commPending = cables.filter(c => c.commissioningStatus === 'Pending' || !c.commissioningStatus).length;
   const commPercent = total > 0 ? Math.round((commBargenComplete / total) * 100) : 0;
 
   // 4. Approvals
