@@ -3,6 +3,13 @@ import { CableEntry, CableLayingStatus, CommissioningStatus, BoqItem, ProjectSet
 import { AUTH_STORAGE_KEY, canEditSchedule, canSignApproval } from '../services/authService';
 import { initialCables, boqSummary, projectMeta } from '../data/cableData';
 import { fetchLiveSheetData, LiveSyncResult } from '../services/sheetLiveSync';
+import { 
+  getSupabaseClient, 
+  fetchAllCablesFromSupabase, 
+  updateCableInSupabase, 
+  mapDbRowToCableEntry,
+  getStoredSupabaseCredentials
+} from '../services/supabaseService';
 import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = 'volttrack_cables_schedule_state_v3_exact_phases';
@@ -281,6 +288,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [isLiveSyncEnabled, liveSyncIntervalSeconds, settings.spreadsheetUrl, settings.webAppUrl]);
 
+  // Supabase Real-Time WebSocket & Auto-Sync Hook
+  useEffect(() => {
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    // 1. Initial fetch from Supabase if table has records
+    fetchAllCablesFromSupabase().then(dbCables => {
+      if (dbCables && dbCables.length > 0) {
+        setCables(dbCables);
+        console.log(`[Supabase DB] Loaded ${dbCables.length} cables from Supabase`);
+      }
+    });
+
+    // 2. Real-Time WebSocket Channel for instant sync across all users
+    try {
+      const channel = client
+        .channel('cables-realtime-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'cables' }, (payload) => {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const updated = mapDbRowToCableEntry(payload.new);
+            setCables(prev => {
+              const exists = prev.some(c => c.cableTag === updated.cableTag);
+              if (exists) {
+                return prev.map(c => c.cableTag === updated.cableTag ? { ...c, ...updated } : c);
+              }
+              return [...prev, updated];
+            });
+            if (selectedCable && selectedCable.cableTag === updated.cableTag) {
+              setSelectedCable(prev => prev ? { ...prev, ...updated } : updated);
+            }
+          }
+        })
+        .subscribe();
+
+      return () => {
+        client.removeChannel(channel);
+      };
+    } catch (e) {
+      console.warn('[Supabase Realtime Channel Notice]:', e);
+    }
+  }, []);
+
   const [lastExcelSaveTime, setLastExcelSaveTime] = useState<string | null>(null);
   const isInitialMount = useRef(true);
   const saveDebounceTimer = useRef<any>(null);
@@ -452,8 +501,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return c;
     }));
-    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
-    showToast(`Cable Laying status set to "${status}" (Saving to Excel...)`, 'success');
+    if (targetUpdated) {
+      syncCableToGoogleSheet(targetUpdated);
+      updateCableInSupabase(targetUpdated);
+    }
+    showToast(`Cable Laying status set to "${status}" (Saving to Excel & Database...)`, 'success');
   };
 
   const updatePreCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
@@ -477,8 +529,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return c;
     }));
-    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
-    showToast(`Pre-Commissioning status set to "${status}" (Saving to Excel...)`, 'success');
+    if (targetUpdated) {
+      syncCableToGoogleSheet(targetUpdated);
+      updateCableInSupabase(targetUpdated);
+    }
+    showToast(`Pre-Commissioning status set to "${status}" (Saving to Excel & Database...)`, 'success');
   };
 
   const updateCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
@@ -502,8 +557,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return c;
     }));
-    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
-    showToast(`Commissioning status set to "${status}" (Saving to Excel...)`, 'success');
+    if (targetUpdated) {
+      syncCableToGoogleSheet(targetUpdated);
+      updateCableInSupabase(targetUpdated);
+    }
+    showToast(`Commissioning status set to "${status}" (Saving to Excel & Database...)`, 'success');
   };
 
   const updateApprovers = (id: string, level: 1 | 2 | 3, name: string) => {
@@ -529,8 +587,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return c;
     }));
-    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
-    showToast(`Sign-off updated for Level ${level} (Saving to Excel...)`, 'success');
+    if (targetUpdated) {
+      syncCableToGoogleSheet(targetUpdated);
+      updateCableInSupabase(targetUpdated);
+    }
+    showToast(`Sign-off updated for Level ${level} (Saving to Excel & Database...)`, 'success');
   };
 
   const updateCable = (id: string, updates: Partial<CableEntry>) => {
@@ -551,8 +612,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return c;
     }));
-    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
-    showToast(`Cable updated & storing to Excel...`, 'info');
+    if (targetUpdated) {
+      syncCableToGoogleSheet(targetUpdated);
+      updateCableInSupabase(targetUpdated);
+    }
+    showToast(`Cable updated & storing to Excel & Database...`, 'info');
   };
 
   const importSpreadsheetData = (newCables: CableEntry[]) => {
