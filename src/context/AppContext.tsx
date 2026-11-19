@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { CableEntry, CableLayingStatus, CommissioningStatus, BoqItem, ProjectSettings } from '../types';
+import { CableEntry, CableLayingStatus, CommissioningStatus, BoqItem, ProjectSettings, AppUser } from '../types';
+import { AUTH_STORAGE_KEY, canEditSchedule, canSignApproval } from '../services/authService';
 import { initialCables, boqSummary, projectMeta } from '../data/cableData';
 import { fetchLiveSheetData, LiveSyncResult } from '../services/sheetLiveSync';
 import * as XLSX from 'xlsx';
@@ -21,6 +22,15 @@ interface AppContextType {
   setActiveView: (view: 'schedule' | 'boq' | 'analytics' | 'specs') => void;
   selectedCable: CableEntry | null;
   setSelectedCable: (cable: CableEntry | null) => void;
+  
+  // Authentication & Permissions
+  currentUser: AppUser | null;
+  isLoginModalOpen: boolean;
+  setIsLoginModalOpen: (open: boolean) => void;
+  login: (user: AppUser) => void;
+  logout: () => void;
+  canEdit: boolean;
+  canApproveLevel: (level: 1 | 2 | 3) => boolean;
   
   // Real-time Live Sync State
   isLiveSyncEnabled: boolean;
@@ -123,6 +133,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeView, setActiveView] = useState<'schedule' | 'boq' | 'analytics' | 'specs'>('schedule');
   const [selectedCable, setSelectedCable] = useState<CableEntry | null>(null);
+
+  // Authentication state (Default is public Viewer)
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
+    try {
+      const saved = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return null;
+  });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const login = (user: AppUser) => {
+    setCurrentUser(user);
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+    } catch (e) {}
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch (e) {}
+  };
+
+  const canEdit = canEditSchedule(currentUser);
+  const canApproveLevel = (level: 1 | 2 | 3) => canSignApproval(currentUser, level);
 
   // Real-Time Live Sync Settings
   const [isLiveSyncEnabled, setIsLiveSyncEnabled] = useState<boolean>(true);
@@ -395,6 +432,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Actions for 3 Stages & Approvals with Real-time Two-Way Write
   const updateCableLayingStatus = (id: string, status: CableLayingStatus, remarks?: string) => {
+    if (!canEdit) {
+      showToast('Authentication required: Please log in as Senior Engineer or Admin to edit Cable Laying.', 'warning');
+      setIsLoginModalOpen(true);
+      return;
+    }
     let targetUpdated: CableEntry | null = null;
     setCables(prev => prev.map(c => {
       if (c.id === id) {
@@ -415,6 +457,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePreCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
+    if (!canEdit) {
+      showToast('Authentication required: Please log in as Senior Engineer or Admin to edit Pre-Commissioning.', 'warning');
+      setIsLoginModalOpen(true);
+      return;
+    }
     let targetUpdated: CableEntry | null = null;
     setCables(prev => prev.map(c => {
       if (c.id === id) {
@@ -435,6 +482,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
+    if (!canEdit) {
+      showToast('Authentication required: Please log in as Senior Engineer or Admin to edit Commissioning.', 'warning');
+      setIsLoginModalOpen(true);
+      return;
+    }
     let targetUpdated: CableEntry | null = null;
     setCables(prev => prev.map(c => {
       if (c.id === id) {
@@ -455,6 +507,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateApprovers = (id: string, level: 1 | 2 | 3, name: string) => {
+    if (!canApproveLevel(level)) {
+      const allowedNames = { 1: 'Nayem Siddik (Senior Engineer)', 2: 'Mossadek Hossain (Senior Engineer)', 3: 'Md Fahad (Manager PP)' };
+      showToast(`Access Restricted: Level ${level} sign-off can only be approved by ${allowedNames[level]} or Admin.`, 'warning');
+      setIsLoginModalOpen(true);
+      return;
+    }
     let targetUpdated: CableEntry | null = null;
     setCables(prev => prev.map(c => {
       if (c.id === id) {
@@ -476,6 +534,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCable = (id: string, updates: Partial<CableEntry>) => {
+    if (!canEdit) {
+      showToast('Authentication required: Please log in to edit cable data.', 'warning');
+      setIsLoginModalOpen(true);
+      return;
+    }
     let targetUpdated: CableEntry | null = null;
     setCables(prev => prev.map(c => {
       if (c.id === id) {
@@ -619,6 +682,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveView,
       selectedCable,
       setSelectedCable,
+      currentUser,
+      isLoginModalOpen,
+      setIsLoginModalOpen,
+      login,
+      logout,
+      canEdit,
+      canApproveLevel,
       isLiveSyncEnabled,
       setIsLiveSyncEnabled,
       liveSyncIntervalSeconds,

@@ -8,10 +8,11 @@ import { BoqView } from './components/BoqView';
 import { SpecsView } from './components/SpecsView';
 import { CableDetailModal } from './components/CableDetailModal';
 import { GoogleSyncModal } from './components/GoogleSyncModal';
+import { LoginModal } from './components/LoginModal';
 import { ToastContainer } from './components/ToastContainer';
 
 export const App: React.FC = () => {
-  const { activeView } = useApp();
+  const { activeView, isLoginModalOpen, setIsLoginModalOpen } = useApp();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
@@ -38,6 +39,12 @@ export const App: React.FC = () => {
       <GoogleSyncModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      {/* Staff Authentication Login Modal */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
       />
 
       {/* Toast Alerts */}

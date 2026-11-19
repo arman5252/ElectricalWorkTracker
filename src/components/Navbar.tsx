@@ -10,7 +10,10 @@ import {
   Boxes, 
   FileText,
   BarChart3,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  UserCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -28,7 +31,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
     lastLiveSyncTimestamp,
     liveSyncStatus,
     liveSyncError,
-    manualRefreshFromSheet
+    manualRefreshFromSheet,
+    currentUser,
+    setIsLoginModalOpen,
+    logout
   } = useApp();
 
   return (
@@ -196,6 +202,43 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
           >
             <SettingsIcon className="w-4 h-4" />
           </button>
+
+          {/* Staff Authentication / Profile Badge */}
+          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-800">
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="flex items-center gap-2 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-left transition-all"
+                  title="Click to view permissions or switch account"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-xs border border-amber-500/30">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <div className="text-[11px] font-bold text-white leading-tight">{currentUser.name}</div>
+                    <div className="text-[9px] text-amber-400 font-medium leading-none">{currentUser.title}</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => logout()}
+                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-xs font-semibold transition-colors"
+                  title="Log out and switch to Viewer mode"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsLoginModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-extrabold transition-all shadow-md shadow-amber-500/20 active:scale-95"
+                title="Log in as Engineer or Admin to change statuses and approve"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Staff Login</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </header>

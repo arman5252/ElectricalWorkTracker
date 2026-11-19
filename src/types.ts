@@ -1,3 +1,14 @@
+export type UserRole = 'admin' | 'engineer' | 'manager' | 'viewer';
+
+export interface AppUser {
+  username: string;
+  name: string;
+  title: string;
+  role: UserRole;
+  approvalKey?: 'approvedBy1' | 'approvedBy2' | 'approvedBy3' | 'all';
+  approvalName?: string;
+}
+
 export type CableStageStatus = 
   | 'Complete By VEL' 
   | 'Complete By Bargen' 

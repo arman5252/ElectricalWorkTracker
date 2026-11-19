@@ -18,7 +18,9 @@ import {
   Check,
   CheckCircle2,
   FileSpreadsheet,
-  Upload
+  Upload,
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
 
 export const getPillStyle = (status: string) => {
@@ -47,7 +49,22 @@ export const StatusPill: React.FC<{
   type: 'laying' | 'pre' | 'comm';
   status: string;
   onChange: (newStatus: any) => void;
-}> = ({ status, onChange }) => {
+  disabled?: boolean;
+  onBlocked?: () => void;
+}> = ({ status, onChange, disabled, onBlocked }) => {
+  if (disabled) {
+    return (
+      <div
+        onClick={onBlocked}
+        title="Public Viewer Mode: Click to log in as Senior Engineer or Admin to change status"
+        className={`inline-flex items-center justify-center gap-1.5 cursor-pointer py-1 px-3 rounded-full text-[11px] border border-white/10 opacity-90 transition-all hover:opacity-100 hover:ring-1 hover:ring-amber-400/50 min-w-[145px] text-center select-none ${getPillStyle(status)}`}
+      >
+        <span>{status || 'Pending'}</span>
+        <Lock className="w-2.5 h-2.5 opacity-60" />
+      </div>
+    );
+  }
+
   return (
     <div className="relative inline-block whitespace-nowrap shrink-0">
       <select
@@ -107,7 +124,11 @@ export const ScheduleView: React.FC = () => {
     lastExcelSaveTime,
     importSpreadsheetData,
     showToast,
-    settings
+    settings,
+    canEdit,
+    canApproveLevel,
+    currentUser,
+    setIsLoginModalOpen
   } = useApp();
 
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -752,25 +773,43 @@ export const ScheduleView: React.FC = () => {
                         <StatusPill
                           type="laying"
                           status={cable.cableLayingStatus}
+                          disabled={!canEdit}
+                          onBlocked={() => {
+                            showToast('Staff Login Required: Log in as Senior Engineer or Admin to change status.', 'warning');
+                            setIsLoginModalOpen(true);
+                          }}
                           onChange={(newStatus) => updateCableLayingStatus(cable.id, newStatus)}
                         />
                       </td>
 
-                      {/* Cable Laying Remarks (Direct Inline Editable) */}
+                      {/* Cable Laying Remarks (Direct Inline Editable if Logged In) */}
                       <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/30">
-                        <input
-                          type="text"
-                          defaultValue={cable.cableLayingRemarks || ''}
-                          key={`${cable.id}-laying-${cable.cableLayingRemarks || ''}`}
-                          onBlur={(e) => {
-                            if (e.target.value !== (cable.cableLayingRemarks || '')) {
-                              updateCable(cable.id, { cableLayingRemarks: e.target.value });
-                            }
-                          }}
-                          placeholder="—"
-                          className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                          title="Click to edit Cable Laying remarks"
-                        />
+                        {canEdit ? (
+                          <input
+                            type="text"
+                            defaultValue={cable.cableLayingRemarks || ''}
+                            key={`${cable.id}-laying-${cable.cableLayingRemarks || ''}`}
+                            onBlur={(e) => {
+                              if (e.target.value !== (cable.cableLayingRemarks || '')) {
+                                updateCable(cable.id, { cableLayingRemarks: e.target.value });
+                              }
+                            }}
+                            placeholder="—"
+                            className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
+                            title="Click to edit Cable Laying remarks"
+                          />
+                        ) : (
+                          <div 
+                            onClick={() => {
+                              showToast('Staff Login Required: Log in to edit remarks.', 'warning');
+                              setIsLoginModalOpen(true);
+                            }}
+                            className="w-full px-1.5 py-1 text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer truncate"
+                            title="Click to log in and edit remarks"
+                          >
+                            {cable.cableLayingRemarks || '—'}
+                          </div>
+                        )}
                       </td>
 
                       {/* Pre-Commissioning Status Pill */}
@@ -778,25 +817,43 @@ export const ScheduleView: React.FC = () => {
                         <StatusPill
                           type="pre"
                           status={cable.preCommissioningStatus}
+                          disabled={!canEdit}
+                          onBlocked={() => {
+                            showToast('Staff Login Required: Log in as Senior Engineer or Admin to change status.', 'warning');
+                            setIsLoginModalOpen(true);
+                          }}
                           onChange={(newStatus) => updatePreCommissioningStatus(cable.id, newStatus)}
                         />
                       </td>
 
-                      {/* Pre-Commissioning Remarks (Direct Inline Editable) */}
+                      {/* Pre-Commissioning Remarks */}
                       <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/20">
-                        <input
-                          type="text"
-                          defaultValue={cable.preCommissioningRemarks || ''}
-                          key={`${cable.id}-pre-${cable.preCommissioningRemarks || ''}`}
-                          onBlur={(e) => {
-                            if (e.target.value !== (cable.preCommissioningRemarks || '')) {
-                              updateCable(cable.id, { preCommissioningRemarks: e.target.value });
-                            }
-                          }}
-                          placeholder="—"
-                          className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                          title="Click to edit Pre-Commissioning remarks"
-                        />
+                        {canEdit ? (
+                          <input
+                            type="text"
+                            defaultValue={cable.preCommissioningRemarks || ''}
+                            key={`${cable.id}-pre-${cable.preCommissioningRemarks || ''}`}
+                            onBlur={(e) => {
+                              if (e.target.value !== (cable.preCommissioningRemarks || '')) {
+                                updateCable(cable.id, { preCommissioningRemarks: e.target.value });
+                              }
+                            }}
+                            placeholder="—"
+                            className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
+                            title="Click to edit Pre-Commissioning remarks"
+                          />
+                        ) : (
+                          <div 
+                            onClick={() => {
+                              showToast('Staff Login Required: Log in to edit remarks.', 'warning');
+                              setIsLoginModalOpen(true);
+                            }}
+                            className="w-full px-1.5 py-1 text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer truncate"
+                            title="Click to log in and edit remarks"
+                          >
+                            {cable.preCommissioningRemarks || '—'}
+                          </div>
+                        )}
                       </td>
 
                       {/* Commissioning Status Pill */}
@@ -804,73 +861,157 @@ export const ScheduleView: React.FC = () => {
                         <StatusPill
                           type="comm"
                           status={cable.commissioningStatus}
+                          disabled={!canEdit}
+                          onBlocked={() => {
+                            showToast('Staff Login Required: Log in as Senior Engineer or Admin to change status.', 'warning');
+                            setIsLoginModalOpen(true);
+                          }}
                           onChange={(newStatus) => updateCommissioningStatus(cable.id, newStatus)}
                         />
                       </td>
 
-                      {/* Commissioning Remarks (Direct Inline Editable) */}
+                      {/* Commissioning Remarks */}
                       <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/30">
-                        <input
-                          type="text"
-                          defaultValue={cable.commissioningRemarks || ''}
-                          key={`${cable.id}-comm-${cable.commissioningRemarks || ''}`}
-                          onBlur={(e) => {
-                            if (e.target.value !== (cable.commissioningRemarks || '')) {
-                              updateCable(cable.id, { commissioningRemarks: e.target.value });
-                            }
-                          }}
-                          placeholder="—"
-                          className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                          title="Click to edit Commissioning remarks"
-                        />
+                        {canEdit ? (
+                          <input
+                            type="text"
+                            defaultValue={cable.commissioningRemarks || ''}
+                            key={`${cable.id}-comm-${cable.commissioningRemarks || ''}`}
+                            onBlur={(e) => {
+                              if (e.target.value !== (cable.commissioningRemarks || '')) {
+                                updateCable(cable.id, { commissioningRemarks: e.target.value });
+                              }
+                            }}
+                            placeholder="—"
+                            className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
+                            title="Click to edit Commissioning remarks"
+                          />
+                        ) : (
+                          <div 
+                            onClick={() => {
+                              showToast('Staff Login Required: Log in to edit remarks.', 'warning');
+                              setIsLoginModalOpen(true);
+                            }}
+                            className="w-full px-1.5 py-1 text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer truncate"
+                            title="Click to log in and edit remarks"
+                          >
+                            {cable.commissioningRemarks || '—'}
+                          </div>
+                        )}
                       </td>
 
-                      {/* Approve By: Naim Bhai (1-Click Interactive Toggle) */}
+                      {/* Approve By: Naim Bhai (Only Nayem Siddik or Admin can sign) */}
                       <td className="py-2 px-2 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => updateApprovers(cable.id, 1, cable.approvedBy1 === 'Naim Bhai' ? '' : 'Naim Bhai')}
-                          className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
-                            cable.approvedBy1 === 'Naim Bhai'
-                              ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm'
-                              : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800/60'
-                          }`}
-                          title={cable.approvedBy1 === 'Naim Bhai' ? 'Click to revoke Naim Bhai sign-off' : 'Click to sign as Naim Bhai'}
-                        >
-                          {cable.approvedBy1 === 'Naim Bhai' ? 'Naim Bhai' : '—'}
-                        </button>
+                        {(() => {
+                          const canSign = canApproveLevel(1);
+                          const isApproved = cable.approvedBy1 === 'Naim Bhai';
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!canSign) {
+                                  showToast('Access Restricted: Level 1 can only be signed off by Nayem Siddik (Senior Engineer) or Admin.', 'warning');
+                                  setIsLoginModalOpen(true);
+                                  return;
+                                }
+                                updateApprovers(cable.id, 1, isApproved ? '' : 'Naim Bhai');
+                              }}
+                              className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+                                isApproved
+                                  ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm font-bold'
+                                  : canSign
+                                  ? 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/80'
+                                  : 'text-slate-600 hover:text-slate-400 opacity-60 cursor-not-allowed'
+                              }`}
+                              title={
+                                !canSign
+                                  ? 'Restricted to Nayem Siddik (Senior Engineer) only'
+                                  : isApproved
+                                  ? 'Click to revoke Nayem Siddik approval'
+                                  : 'Click to sign as Nayem Siddik'
+                              }
+                            >
+                              <span>{isApproved ? 'Naim Bhai' : '—'}</span>
+                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+                            </button>
+                          );
+                        })()}
                       </td>
 
-                      {/* Approve By: Mosaddik Bhai (1-Click Interactive Toggle) */}
+                      {/* Approve By: Mosaddik Bhai (Only Mossadek Hossain or Admin can sign) */}
                       <td className="py-2 px-2 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => updateApprovers(cable.id, 2, cable.approvedBy2 === 'Mosaddik Bhai' ? '' : 'Mosaddik Bhai')}
-                          className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
-                            cable.approvedBy2 === 'Mosaddik Bhai'
-                              ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm'
-                              : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800/60'
-                          }`}
-                          title={cable.approvedBy2 === 'Mosaddik Bhai' ? 'Click to revoke Mosaddik Bhai sign-off' : 'Click to sign as Mosaddik Bhai'}
-                        >
-                          {cable.approvedBy2 === 'Mosaddik Bhai' ? 'Mosaddik Bhai' : '—'}
-                        </button>
+                        {(() => {
+                          const canSign = canApproveLevel(2);
+                          const isApproved = cable.approvedBy2 === 'Mosaddik Bhai';
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!canSign) {
+                                  showToast('Access Restricted: Level 2 can only be signed off by Mossadek Hossain (Senior Engineer) or Admin.', 'warning');
+                                  setIsLoginModalOpen(true);
+                                  return;
+                                }
+                                updateApprovers(cable.id, 2, isApproved ? '' : 'Mosaddik Bhai');
+                              }}
+                              className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+                                isApproved
+                                  ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm font-bold'
+                                  : canSign
+                                  ? 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/80'
+                                  : 'text-slate-600 hover:text-slate-400 opacity-60 cursor-not-allowed'
+                              }`}
+                              title={
+                                !canSign
+                                  ? 'Restricted to Mossadek Hossain (Senior Engineer) only'
+                                  : isApproved
+                                  ? 'Click to revoke Mossadek Hossain approval'
+                                  : 'Click to sign as Mossadek Hossain'
+                              }
+                            >
+                              <span>{isApproved ? 'Mosaddik Bhai' : '—'}</span>
+                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+                            </button>
+                          );
+                        })()}
                       </td>
 
-                      {/* Approve By: Fahad Sir (1-Click Interactive Toggle) */}
+                      {/* Approve By: Fahad Sir (Only Md Fahad or Admin can sign) */}
                       <td className="py-2 px-2 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => updateApprovers(cable.id, 3, cable.approvedBy3 === 'Fahad Sir' ? '' : 'Fahad Sir')}
-                          className={`w-full py-1 px-2 rounded-lg text-xs font-bold transition-all active:scale-95 ${
-                            cable.approvedBy3 === 'Fahad Sir'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                              : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800/60'
-                          }`}
-                          title={cable.approvedBy3 === 'Fahad Sir' ? 'Click to revoke Fahad Sir approval' : 'Click to approve as Fahad Sir'}
-                        >
-                          {cable.approvedBy3 === 'Fahad Sir' ? 'Fahad Sir' : '—'}
-                        </button>
+                        {(() => {
+                          const canSign = canApproveLevel(3);
+                          const isApproved = cable.approvedBy3 === 'Fahad Sir';
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!canSign) {
+                                  showToast('Access Restricted: Level 3 final approval can only be signed by Md Fahad (Manager PP) or Admin.', 'warning');
+                                  setIsLoginModalOpen(true);
+                                  return;
+                                }
+                                updateApprovers(cable.id, 3, isApproved ? '' : 'Fahad Sir');
+                              }}
+                              className={`w-full py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                                isApproved
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                                  : canSign
+                                  ? 'text-slate-500 hover:text-amber-300 hover:bg-slate-800/80'
+                                  : 'text-slate-600 hover:text-slate-400 opacity-60 cursor-not-allowed'
+                              }`}
+                              title={
+                                !canSign
+                                  ? 'Restricted to Md Fahad (Manager PP) only'
+                                  : isApproved
+                                  ? 'Click to revoke Md Fahad final approval'
+                                  : 'Click to sign as Md Fahad (Manager PP)'
+                              }
+                            >
+                              <span>{isApproved ? 'Fahad Sir' : '—'}</span>
+                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+                            </button>
+                          );
+                        })()}
                       </td>
 
                       {/* Inspect Drawer button */}
@@ -934,6 +1075,11 @@ export const ScheduleView: React.FC = () => {
                     <StatusPill
                       type="laying"
                       status={cable.cableLayingStatus}
+                      disabled={!canEdit}
+                      onBlocked={() => {
+                        showToast('Staff Login Required: Log in as Senior Engineer or Admin to change status.', 'warning');
+                        setIsLoginModalOpen(true);
+                      }}
                       onChange={(newStatus) => updateCableLayingStatus(cable.id, newStatus)}
                     />
                   </div>
@@ -942,6 +1088,11 @@ export const ScheduleView: React.FC = () => {
                     <StatusPill
                       type="pre"
                       status={cable.preCommissioningStatus}
+                      disabled={!canEdit}
+                      onBlocked={() => {
+                        showToast('Staff Login Required: Log in as Senior Engineer or Admin to change status.', 'warning');
+                        setIsLoginModalOpen(true);
+                      }}
                       onChange={(newStatus) => updatePreCommissioningStatus(cable.id, newStatus)}
                     />
                   </div>
@@ -950,6 +1101,11 @@ export const ScheduleView: React.FC = () => {
                     <StatusPill
                       type="comm"
                       status={cable.commissioningStatus}
+                      disabled={!canEdit}
+                      onBlocked={() => {
+                        showToast('Staff Login Required: Log in as Senior Engineer or Admin to change status.', 'warning');
+                        setIsLoginModalOpen(true);
+                      }}
                       onChange={(newStatus) => updateCommissioningStatus(cable.id, newStatus)}
                     />
                   </div>
