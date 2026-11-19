@@ -103,9 +103,9 @@ function handleUpdateCable(ss, payload) {
         if (payload.commissioningRemarks !== undefined) lvSheet.getRange(row, 16).setValue(payload.commissioningRemarks);
 
         const approvals = [];
-        if (payload.approvedBy1) approvals.push("Naim Bhai");
-        if (payload.approvedBy2) approvals.push("Mosaddik Bhai");
-        if (payload.approvedBy3) approvals.push("Fahad Sir");
+        if (payload.approvedBy1) approvals.push(String(payload.approvedBy1).trim() || "Nayem Siddik (Sr. Engr)");
+        if (payload.approvedBy2) approvals.push(String(payload.approvedBy2).trim() || "Mossadek Hossain (Sr. Engr)");
+        if (payload.approvedBy3) approvals.push(String(payload.approvedBy3).trim() || "Md Fahad (Manager PP)");
         if (approvals.length > 0 || payload.approvedBy1 !== undefined) {
           lvSheet.getRange(row, 17).setValue(approvals.join(", "));
         }
@@ -136,9 +136,9 @@ function handleUpdateCable(ss, payload) {
         if (payload.preCommissioningRemarks !== undefined) ctrlSheet.getRange(row, 17).setValue(payload.preCommissioningRemarks);
         if (payload.commissioningStatus !== undefined) ctrlSheet.getRange(row, 18).setValue(payload.commissioningStatus);
         if (payload.commissioningRemarks !== undefined) ctrlSheet.getRange(row, 19).setValue(payload.commissioningRemarks);
-        if (payload.approvedBy1 !== undefined) ctrlSheet.getRange(row, 20).setValue(payload.approvedBy1 ? "Naim Bhai" : "");
-        if (payload.approvedBy2 !== undefined) ctrlSheet.getRange(row, 21).setValue(payload.approvedBy2 ? "Mosaddik Bhai" : "");
-        if (payload.approvedBy3 !== undefined) ctrlSheet.getRange(row, 22).setValue(payload.approvedBy3 ? "Fahad Sir" : "");
+        if (payload.approvedBy1 !== undefined) ctrlSheet.getRange(row, 20).setValue(payload.approvedBy1 ? String(payload.approvedBy1) : "");
+        if (payload.approvedBy2 !== undefined) ctrlSheet.getRange(row, 21).setValue(payload.approvedBy2 ? String(payload.approvedBy2) : "");
+        if (payload.approvedBy3 !== undefined) ctrlSheet.getRange(row, 22).setValue(payload.approvedBy3 ? String(payload.approvedBy3) : "");
 
         SpreadsheetApp.flush();
         return jsonResponse({
@@ -196,9 +196,9 @@ function handleGetAllCables(ss) {
         preCommissioningRemarks: row[13] || "",
         commissioningStatus: row[14] || "Pending",
         commissioningRemarks: row[15] || "",
-        approvedBy1: appStr.indexOf("Naim") !== -1 ? "Naim Bhai" : undefined,
-        approvedBy2: appStr.indexOf("Mosaddik") !== -1 ? "Mosaddik Bhai" : undefined,
-        approvedBy3: appStr.indexOf("Fahad") !== -1 ? "Fahad Sir" : undefined,
+        approvedBy1: (appStr.indexOf("Naim") !== -1 || appStr.indexOf("Nayem") !== -1) ? "Nayem Siddik (Sr. Engr)" : undefined,
+        approvedBy2: (appStr.indexOf("Mosaddik") !== -1 || appStr.indexOf("Mossadek") !== -1) ? "Mossadek Hossain (Sr. Engr)" : undefined,
+        approvedBy3: appStr.indexOf("Fahad") !== -1 ? "Md Fahad (Manager PP)" : undefined,
         voltage: currentSec.indexOf("24V") !== -1 ? "24V DC" : "415V AC / LV",
         status: row[14] || "Pending"
       });
@@ -236,9 +236,9 @@ function handleGetAllCables(ss) {
         preCommissioningRemarks: row[16] === "Remarks" ? "" : (row[16] || ""),
         commissioningStatus: row[17] || "Pending",
         commissioningRemarks: row[18] === "Remarks" ? "" : (row[18] || ""),
-        approvedBy1: String(row[19] || "").indexOf("Naim") !== -1 ? "Naim Bhai" : undefined,
-        approvedBy2: String(row[20] || "").indexOf("Mosaddik") !== -1 ? "Mosaddik Bhai" : undefined,
-        approvedBy3: String(row[21] || "").indexOf("Fahad") !== -1 ? "Fahad Sir" : undefined,
+        approvedBy1: (String(row[19] || "").indexOf("Naim") !== -1 || String(row[19] || "").indexOf("Nayem") !== -1) ? "Nayem Siddik (Sr. Engr)" : undefined,
+        approvedBy2: (String(row[20] || "").indexOf("Mosaddik") !== -1 || String(row[20] || "").indexOf("Mossadek") !== -1) ? "Mossadek Hossain (Sr. Engr)" : undefined,
+        approvedBy3: String(row[21] || "").indexOf("Fahad") !== -1 ? "Md Fahad (Manager PP)" : undefined,
         voltage: "Control / 110V",
         status: row[17] || "Pending"
       });

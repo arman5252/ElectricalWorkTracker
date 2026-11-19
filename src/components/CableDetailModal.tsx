@@ -42,9 +42,9 @@ export const CableDetailModal: React.FC = () => {
   const [commissioningStatus, setCommissioningStatus] = useState<CommissioningStatus>(selectedCable.commissioningStatus);
   const [commissioningRemarks, setCommissioningRemarks] = useState<string>(selectedCable.commissioningRemarks || '');
 
-  const [approvedBy1, setApprovedBy1] = useState<boolean>(selectedCable.approvedBy1 === 'Naim Bhai');
-  const [approvedBy2, setApprovedBy2] = useState<boolean>(selectedCable.approvedBy2 === 'Mosaddik Bhai');
-  const [approvedBy3, setApprovedBy3] = useState<boolean>(selectedCable.approvedBy3 === 'Fahad Sir');
+  const [approvedBy1, setApprovedBy1] = useState<boolean>(Boolean(selectedCable.approvedBy1));
+  const [approvedBy2, setApprovedBy2] = useState<boolean>(Boolean(selectedCable.approvedBy2));
+  const [approvedBy3, setApprovedBy3] = useState<boolean>(Boolean(selectedCable.approvedBy3));
 
   const [notes, setNotes] = useState<string>(selectedCable.notes || '');
   const [drawingUrl, setDrawingUrl] = useState<string>(selectedCable.drawingUrl || '');
@@ -59,9 +59,9 @@ export const CableDetailModal: React.FC = () => {
       preCommissioningRemarks,
       commissioningStatus,
       commissioningRemarks,
-      approvedBy1: approvedBy1 ? 'Naim Bhai' : undefined,
-      approvedBy2: approvedBy2 ? 'Mosaddik Bhai' : undefined,
-      approvedBy3: approvedBy3 ? 'Fahad Sir' : undefined,
+      approvedBy1: approvedBy1 ? 'Nayem Siddik (Sr. Engr)' : undefined,
+      approvedBy2: approvedBy2 ? 'Mossadek Hossain (Sr. Engr)' : undefined,
+      approvedBy3: approvedBy3 ? 'Md Fahad (Manager PP)' : undefined,
       notes,
       drawingUrl
     });
@@ -309,9 +309,9 @@ export const CableDetailModal: React.FC = () => {
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-              {/* Naim Bhai */}
+              {/* Nayem Siddik (Sr. Engr) */}
               <label 
-                title={!canApproveLevel(1) ? "Sign-off allowed only for Nayem Siddik or Admin" : "Toggle Naim Bhai approval"}
+                title={!canApproveLevel(1) ? "Sign-off allowed only for Nayem Siddik (Senior Engineer) or Admin" : "Toggle Nayem Siddik approval"}
                 className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
                   canApproveLevel(1) ? 'cursor-pointer hover:border-emerald-500/60' : 'cursor-not-allowed opacity-75'
                 } ${
@@ -327,16 +327,16 @@ export const CableDetailModal: React.FC = () => {
                     className="rounded text-emerald-500 focus:ring-emerald-500 disabled:opacity-50"
                   />
                   <div>
-                    <span className="font-semibold text-xs block">Naim Bhai</span>
+                    <span className="font-semibold text-xs block">Nayem Siddik (Sr. Engr)</span>
                     <span className="text-[9px] text-slate-500 block">Nayem Siddik / Admin</span>
                   </div>
                 </div>
                 {!canApproveLevel(1) && <Lock className="w-3 h-3 text-slate-500" />}
               </label>
 
-              {/* Mosaddik Bhai */}
+              {/* Mossadek Hossain (Sr. Engr) */}
               <label 
-                title={!canApproveLevel(2) ? "Sign-off allowed only for Mossadek Hossain or Admin" : "Toggle Mosaddik Bhai approval"}
+                title={!canApproveLevel(2) ? "Sign-off allowed only for Mossadek Hossain (Senior Engineer) or Admin" : "Toggle Mossadek Hossain approval"}
                 className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
                   canApproveLevel(2) ? 'cursor-pointer hover:border-emerald-500/60' : 'cursor-not-allowed opacity-75'
                 } ${
@@ -352,16 +352,16 @@ export const CableDetailModal: React.FC = () => {
                     className="rounded text-emerald-500 focus:ring-emerald-500 disabled:opacity-50"
                   />
                   <div>
-                    <span className="font-semibold text-xs block">Mosaddik Bhai</span>
+                    <span className="font-semibold text-xs block">Mossadek Hossain (Sr. Engr)</span>
                     <span className="text-[9px] text-slate-500 block">Mossadek Hossain / Admin</span>
                   </div>
                 </div>
                 {!canApproveLevel(2) && <Lock className="w-3 h-3 text-slate-500" />}
               </label>
 
-              {/* Fahad Sir */}
+              {/* Md Fahad (Manager PP) */}
               <label 
-                title={!canApproveLevel(3) ? "Final sign-off allowed only for Md Fahad or Admin" : "Toggle Fahad Sir approval"}
+                title={!canApproveLevel(3) ? "Final sign-off allowed only for Md Fahad (Manager PP) or Admin" : "Toggle Md Fahad approval"}
                 className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
                   canApproveLevel(3) ? 'cursor-pointer hover:border-amber-500/60' : 'cursor-not-allowed opacity-75'
                 } ${
@@ -377,8 +377,8 @@ export const CableDetailModal: React.FC = () => {
                     className="rounded text-amber-500 focus:ring-amber-500 disabled:opacity-50"
                   />
                   <div>
-                    <span className="text-xs block">Fahad Sir (Final)</span>
-                    <span className="text-[9px] text-slate-500 block">Md Fahad (Manager PP) / Admin</span>
+                    <span className="text-xs block font-bold">Md Fahad (Manager PP)</span>
+                    <span className="text-[9px] text-slate-500 block">Md Fahad (Final) / Admin</span>
                   </div>
                 </div>
                 {!canApproveLevel(3) && <Lock className="w-3 h-3 text-slate-500" />}

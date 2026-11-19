@@ -171,9 +171,9 @@ export const ScheduleView: React.FC = () => {
       if (preCommissioningFilter !== 'All' && cable.preCommissioningStatus !== preCommissioningFilter) return false;
       if (commissioningFilter !== 'All' && cable.commissioningStatus !== commissioningFilter) return false;
       if (approverFilter !== 'All') {
-        if (approverFilter === 'Fahad Sir' && cable.approvedBy3 !== 'Fahad Sir') return false;
-        if (approverFilter === 'Mosaddik Bhai' && cable.approvedBy2 !== 'Mosaddik Bhai') return false;
-        if (approverFilter === 'Naim Bhai' && cable.approvedBy1 !== 'Naim Bhai') return false;
+        if ((approverFilter === 'Fahad Sir' || approverFilter === 'Md Fahad (Manager PP)') && !cable.approvedBy3) return false;
+        if ((approverFilter === 'Mosaddik Bhai' || approverFilter === 'Mossadek Hossain (Sr. Engr)') && !cable.approvedBy2) return false;
+        if ((approverFilter === 'Naim Bhai' || approverFilter === 'Nayem Siddik (Sr. Engr)') && !cable.approvedBy1) return false;
       }
 
       // Search Query
@@ -322,9 +322,9 @@ export const ScheduleView: React.FC = () => {
           preCommissioningRemarks: String(r['Pre-Commissioning Remarks'] || ''),
           commissioningStatus: (r['Commissioning Status'] as CommissioningStatus) || 'Pending',
           commissioningRemarks: String(r['Commissioning Remarks'] || ''),
-          approvedBy1: r['Approve: Naim Bhai'] || r['Naim Bhai'] ? 'Naim Bhai' : undefined,
-          approvedBy2: r['Approve: Mosaddik Bhai'] || r['Mosaddik Bhai'] ? 'Mosaddik Bhai' : undefined,
-          approvedBy3: r['Approve: Fahad Sir'] || r['Fahad Sir'] ? 'Fahad Sir' : undefined,
+          approvedBy1: r['Approve: Nayem Siddik (Sr. Engr)'] || r['Nayem Siddik'] || r['Approve: Naim Bhai'] || r['Naim Bhai'] ? 'Nayem Siddik (Sr. Engr)' : undefined,
+          approvedBy2: r['Approve: Mossadek Hossain (Sr. Engr)'] || r['Mossadek Hossain'] || r['Approve: Mosaddik Bhai'] || r['Mosaddik Bhai'] ? 'Mossadek Hossain (Sr. Engr)' : undefined,
+          approvedBy3: r['Approve: Md Fahad (Manager PP)'] || r['Md Fahad'] || r['Approve: Fahad Sir'] || r['Fahad Sir'] ? 'Md Fahad (Manager PP)' : undefined,
           updatedAt: new Date().toISOString()
         }));
 
@@ -620,9 +620,9 @@ export const ScheduleView: React.FC = () => {
                 className="w-full py-1.5 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-amber-400 truncate"
               >
                 <option value="All">Approvals: All</option>
-                <option value="Fahad Sir">Approved: Fahad Sir</option>
-                <option value="Mosaddik Bhai">Verified: Mosaddik Bhai</option>
-                <option value="Naim Bhai">Checked: Naim Bhai</option>
+                <option value="Md Fahad (Manager PP)">Approved: Md Fahad (Manager PP)</option>
+                <option value="Mossadek Hossain (Sr. Engr)">Verified: Mossadek Hossain (Sr. Engr)</option>
+                <option value="Nayem Siddik (Sr. Engr)">Checked: Nayem Siddik (Sr. Engr)</option>
               </select>
             </div>
           </div>
@@ -709,9 +709,18 @@ export const ScheduleView: React.FC = () => {
                   <th className="py-2.5 px-3 w-36 border-r border-slate-800 bg-slate-950/80">Remarks</th>
 
                   {/* Approve By subheaders - exact matching the 3 approval persons */}
-                  <th className="py-2.5 px-2 w-28 text-center font-bold text-slate-200">Naim Bhai</th>
-                  <th className="py-2.5 px-2 w-28 text-center font-bold text-slate-200">Mosaddik Bhai</th>
-                  <th className="py-2.5 px-2 w-28 text-center font-bold text-amber-300">Fahad Sir</th>
+                  <th className="py-2.5 px-2 w-32 text-center font-bold text-slate-200">
+                    <div>Nayem Siddik</div>
+                    <div className="text-[10px] text-slate-400 font-normal">Sr. Engr</div>
+                  </th>
+                  <th className="py-2.5 px-2 w-32 text-center font-bold text-slate-200">
+                    <div>Mossadek Hossain</div>
+                    <div className="text-[10px] text-slate-400 font-normal">Sr. Engr</div>
+                  </th>
+                  <th className="py-2.5 px-2 w-32 text-center font-bold text-amber-300">
+                    <div>Md Fahad</div>
+                    <div className="text-[10px] text-amber-400/80 font-normal">Manager PP</div>
+                  </th>
                   <th className="py-2.5 px-2 w-12 text-center">View</th>
                 </tr>
               </thead>
@@ -900,11 +909,11 @@ export const ScheduleView: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Approve By: Naim Bhai (Only Nayem Siddik or Admin can sign) */}
+                      {/* Approve By: Nayem Siddik (Only Nayem Siddik or Admin can sign) */}
                       <td className="py-2 px-2 text-center whitespace-nowrap">
                         {(() => {
                           const canSign = canApproveLevel(1);
-                          const isApproved = cable.approvedBy1 === 'Naim Bhai';
+                          const isApproved = Boolean(cable.approvedBy1);
                           return (
                             <button
                               type="button"
@@ -914,7 +923,7 @@ export const ScheduleView: React.FC = () => {
                                   setIsLoginModalOpen(true);
                                   return;
                                 }
-                                updateApprovers(cable.id, 1, isApproved ? '' : 'Naim Bhai');
+                                updateApprovers(cable.id, 1, isApproved ? '' : 'Nayem Siddik (Sr. Engr)');
                               }}
                               className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
@@ -928,21 +937,21 @@ export const ScheduleView: React.FC = () => {
                                   ? 'Restricted to Nayem Siddik (Senior Engineer) only'
                                   : isApproved
                                   ? 'Click to revoke Nayem Siddik approval'
-                                  : 'Click to sign as Nayem Siddik'
+                                  : 'Click to sign as Nayem Siddik (Sr. Engr)'
                               }
                             >
-                              <span>{isApproved ? 'Naim Bhai' : '—'}</span>
-                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+                              <span className="truncate">{isApproved ? 'Nayem Siddik' : '—'}</span>
+                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />}
                             </button>
                           );
                         })()}
                       </td>
 
-                      {/* Approve By: Mosaddik Bhai (Only Mossadek Hossain or Admin can sign) */}
+                      {/* Approve By: Mossadek Hossain (Only Mossadek Hossain or Admin can sign) */}
                       <td className="py-2 px-2 text-center whitespace-nowrap">
                         {(() => {
                           const canSign = canApproveLevel(2);
-                          const isApproved = cable.approvedBy2 === 'Mosaddik Bhai';
+                          const isApproved = Boolean(cable.approvedBy2);
                           return (
                             <button
                               type="button"
@@ -952,7 +961,7 @@ export const ScheduleView: React.FC = () => {
                                   setIsLoginModalOpen(true);
                                   return;
                                 }
-                                updateApprovers(cable.id, 2, isApproved ? '' : 'Mosaddik Bhai');
+                                updateApprovers(cable.id, 2, isApproved ? '' : 'Mossadek Hossain (Sr. Engr)');
                               }}
                               className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
@@ -966,21 +975,21 @@ export const ScheduleView: React.FC = () => {
                                   ? 'Restricted to Mossadek Hossain (Senior Engineer) only'
                                   : isApproved
                                   ? 'Click to revoke Mossadek Hossain approval'
-                                  : 'Click to sign as Mossadek Hossain'
+                                  : 'Click to sign as Mossadek Hossain (Sr. Engr)'
                               }
                             >
-                              <span>{isApproved ? 'Mosaddik Bhai' : '—'}</span>
-                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+                              <span className="truncate">{isApproved ? 'Mossadek' : '—'}</span>
+                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />}
                             </button>
                           );
                         })()}
                       </td>
 
-                      {/* Approve By: Fahad Sir (Only Md Fahad or Admin can sign) */}
+                      {/* Approve By: Md Fahad (Only Md Fahad or Admin can sign) */}
                       <td className="py-2 px-2 text-center whitespace-nowrap">
                         {(() => {
                           const canSign = canApproveLevel(3);
-                          const isApproved = cable.approvedBy3 === 'Fahad Sir';
+                          const isApproved = Boolean(cable.approvedBy3);
                           return (
                             <button
                               type="button"
@@ -990,7 +999,7 @@ export const ScheduleView: React.FC = () => {
                                   setIsLoginModalOpen(true);
                                   return;
                                 }
-                                updateApprovers(cable.id, 3, isApproved ? '' : 'Fahad Sir');
+                                updateApprovers(cable.id, 3, isApproved ? '' : 'Md Fahad (Manager PP)');
                               }}
                               className={`w-full py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
@@ -1007,8 +1016,8 @@ export const ScheduleView: React.FC = () => {
                                   : 'Click to sign as Md Fahad (Manager PP)'
                               }
                             >
-                              <span>{isApproved ? 'Fahad Sir' : '—'}</span>
-                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500" />}
+                              <span className="truncate">{isApproved ? 'Md Fahad' : '—'}</span>
+                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />}
                             </button>
                           );
                         })()}

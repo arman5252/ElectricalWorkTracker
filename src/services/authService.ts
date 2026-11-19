@@ -25,7 +25,7 @@ export const ACCOUNTS: Record<string, { password: string; user: AppUser }> = {
       title: 'Senior Engineer',
       role: 'engineer',
       approvalKey: 'approvedBy1',
-      approvalName: 'Naim Bhai'
+      approvalName: 'Nayem Siddik (Sr. Engr)'
     }
   },
   mossadek: {
@@ -36,7 +36,7 @@ export const ACCOUNTS: Record<string, { password: string; user: AppUser }> = {
       title: 'Senior Engineer',
       role: 'engineer',
       approvalKey: 'approvedBy2',
-      approvalName: 'Mosaddik Bhai'
+      approvalName: 'Mossadek Hossain (Sr. Engr)'
     }
   },
   fahad: {
@@ -47,7 +47,7 @@ export const ACCOUNTS: Record<string, { password: string; user: AppUser }> = {
       title: 'Manager PP',
       role: 'manager',
       approvalKey: 'approvedBy3',
-      approvalName: 'Fahad Sir'
+      approvalName: 'Md Fahad (Manager PP)'
     }
   }
 };

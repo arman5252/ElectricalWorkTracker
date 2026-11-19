@@ -47,9 +47,9 @@ export const VisualChartsView: React.FC = () => {
   const commPending = cables.filter(c => c.commissioningStatus === 'Pending').length;
 
   // 4. Multi-level Approvals
-  const naimSign = cables.filter(c => c.approvedBy1 === 'Naim Bhai').length;
-  const mosaddikSign = cables.filter(c => c.approvedBy2 === 'Mosaddik Bhai').length;
-  const fahadSign = cables.filter(c => c.approvedBy3 === 'Fahad Sir').length;
+  const naimSign = cables.filter(c => Boolean(c.approvedBy1)).length;
+  const mosaddikSign = cables.filter(c => Boolean(c.approvedBy2)).length;
+  const fahadSign = cables.filter(c => Boolean(c.approvedBy3)).length;
 
   // Comparative Workflow Chart Data
   const stagesComparisonData = [
@@ -89,9 +89,9 @@ export const VisualChartsView: React.FC = () => {
 
   // Approver Sign-off Bar Data
   const approverData = [
-    { name: 'Naim Bhai', signed: naimSign, remaining: total - naimSign },
-    { name: 'Mosaddik Bhai', signed: mosaddikSign, remaining: total - mosaddikSign },
-    { name: 'Fahad Sir (Final)', signed: fahadSign, remaining: total - fahadSign },
+    { name: 'Nayem Siddik (Sr. Engr)', signed: naimSign, remaining: total - naimSign },
+    { name: 'Mossadek Hossain (Sr. Engr)', signed: mosaddikSign, remaining: total - mosaddikSign },
+    { name: 'Md Fahad (Manager PP)', signed: fahadSign, remaining: total - fahadSign },
   ];
 
   // Top Conductor Sizes
@@ -280,7 +280,7 @@ export const VisualChartsView: React.FC = () => {
             <span className="text-xs text-slate-400 font-mono">Hierarchy</span>
           </div>
           <p className="text-xs text-slate-400 mb-4">
-            Sign-off counts for Naim Bhai, Mosaddik Bhai, and Fahad Sir.
+            Sign-off counts for Nayem Siddik (Sr. Engr), Mossadek Hossain (Sr. Engr), and Md Fahad (Manager PP).
           </p>
 
           <div className="h-64 w-full">

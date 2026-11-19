@@ -47,9 +47,9 @@ export const ScheduleStats: React.FC = () => {
   const commPercent = total > 0 ? Math.round((commBargenComplete / total) * 100) : 0;
 
   // 4. Approvals
-  const approvedFahad = cables.filter(c => c.approvedBy3 === 'Fahad Sir').length;
-  const approvedMosaddik = cables.filter(c => c.approvedBy2 === 'Mosaddik Bhai').length;
-  const approvedNaim = cables.filter(c => c.approvedBy1 === 'Naim Bhai').length;
+  const approvedFahad = cables.filter(c => Boolean(c.approvedBy3)).length;
+  const approvedMosaddik = cables.filter(c => Boolean(c.approvedBy2)).length;
+  const approvedNaim = cables.filter(c => Boolean(c.approvedBy1)).length;
 
   return (
     <div className="space-y-3">
@@ -177,9 +177,9 @@ export const ScheduleStats: React.FC = () => {
 
         {/* Phase 4: Approve By (Sign-offs) */}
         <div 
-          onClick={() => { setApproverFilter(approverFilter === 'Fahad Sir' ? 'All' : 'Fahad Sir'); setActiveView('schedule'); }}
+          onClick={() => { setApproverFilter(approverFilter === 'Fahad Sir' || approverFilter === 'Md Fahad (Manager PP)' ? 'All' : 'Md Fahad (Manager PP)'); setActiveView('schedule'); }}
           className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-lg ${
-            approverFilter === 'Fahad Sir'
+            approverFilter === 'Fahad Sir' || approverFilter === 'Md Fahad (Manager PP)'
               ? 'bg-slate-900 border-amber-500 ring-1 ring-amber-500/40'
               : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
           }`}
@@ -196,15 +196,15 @@ export const ScheduleStats: React.FC = () => {
 
           <div className="space-y-1.5 mt-2">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Level 1: <strong className="text-white">Naim Bhai</strong></span>
+              <span className="text-slate-400">Level 1: <strong className="text-white">Nayem Siddik (Sr. Engr)</strong></span>
               <span className="font-mono font-bold text-slate-200">{approvedNaim} Signed</span>
             </div>
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Level 2: <strong className="text-white">Mosaddik Bhai</strong></span>
+              <span className="text-slate-400">Level 2: <strong className="text-white">Mossadek Hossain (Sr. Engr)</strong></span>
               <span className="font-mono font-bold text-slate-200">{approvedMosaddik} Signed</span>
             </div>
             <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800">
-              <span className="text-amber-300 font-semibold">Final: <strong>Fahad Sir</strong></span>
+              <span className="text-amber-300 font-semibold">Final: <strong>Md Fahad (Manager PP)</strong></span>
               <span className="font-mono font-bold text-amber-400">{approvedFahad} Approved</span>
             </div>
           </div>

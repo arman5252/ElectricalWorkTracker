@@ -399,9 +399,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         'Pre-Commissioning Remarks': c.preCommissioningRemarks || '',
         'Commissioning Status': c.commissioningStatus || 'Pending',
         'Commissioning Remarks': c.commissioningRemarks || '',
-        'Approve: Naim Bhai': c.approvedBy1 || '',
-        'Approve: Mosaddik Bhai': c.approvedBy2 || '',
-        'Approve: Fahad Sir': c.approvedBy3 || '',
+        'Approve: Nayem Siddik (Sr. Engr)': c.approvedBy1 || '',
+        'Approve: Mossadek Hossain (Sr. Engr)': c.approvedBy2 || '',
+        'Approve: Md Fahad (Manager PP)': c.approvedBy3 || '',
         'Last Updated': c.updatedAt || new Date().toISOString()
       }));
 

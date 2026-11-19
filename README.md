@@ -12,7 +12,7 @@ An industrial, web-based electrical work tracking dashboard connecting directly 
   - **Cable Laying**: `Complete By VEL` (green), `Progress` (light green), `Pending` (dark red), plus direct remarks.
   - **Pre-Commissioning**: `Complete By Bargen` (dark green), `Progress` (light green), `Pending` (dark red), plus direct remarks.
   - **Commissioning**: `Complete By Bargen` (dark green), `Progress` (light green), `Pending` (dark red), plus direct remarks.
-  - **3-Tier Approval Sign-Off**: 1-click interactive authorization by **Naim Bhai**, **Mosaddik Bhai**, and **Fahad Sir**.
+  - **3-Tier Approval Sign-Off**: 1-click interactive authorization by **Nayem Siddik (Sr. Engr)**, **Mossadek Hossain (Sr. Engr)**, and **Md Fahad (Manager PP)**.
 - **Real-Time Two-Way Sync**:
   - **Local Excel (`.xlsx`) Auto-Save**: Automatically debounces and writes all inputs, statuses, and remarks into `Bergen_Engines_Cable_Schedule_Live.xlsx`.
   - **Google Sheets Two-Way Read/Write**: Integrates with Google Apps Script Web App for cloud syncing.
