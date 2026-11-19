@@ -37,36 +37,7 @@ export async function fetchLiveSheetData(
 ): Promise<LiveSyncResult> {
   const now = new Date().toLocaleTimeString();
 
-  // 1. If Web App URL is present, use it for direct authenticated read
-  if (webAppUrl && webAppUrl.trim()) {
-    try {
-      const url = new URL(webAppUrl.trim());
-      url.searchParams.set('action', 'getCables');
-      url.searchParams.set('_t', Date.now().toString());
-
-      const res = await fetch(url.toString(), {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'no-cache'
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data && Array.isArray(json.data.cables) && json.data.cables.length > 0) {
-          return {
-            success: true,
-            cables: json.data.cables,
-            source: 'apps_script',
-            timestamp: now
-          };
-        }
-      }
-    } catch (e: any) {
-      console.warn('Apps Script live fetch notice:', e.message);
-    }
-  }
-
-  // 2. Direct Google Sheets gviz API live fetch (reads both LV Power and Control sheets)
+  // 1. Primary Live Read: Direct Google Sheets gviz API (reads ALL 457 cables across both LV Power and Control tabs)
   try {
     const match = spreadsheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
     const sheetId = match ? match[1] : '1vGcIIdzGF8PaF1F2iCzwoRZh0WcSLuAKiJxiOTsDDIk';

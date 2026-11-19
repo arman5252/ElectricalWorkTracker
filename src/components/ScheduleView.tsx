@@ -108,7 +108,7 @@ export const ScheduleView: React.FC = () => {
 
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 50;
+  const [pageSize, setPageSize] = useState<number>(100);
 
   // Extract unique options
   const uniqueSections = useMemo(() => {
@@ -195,8 +195,10 @@ export const ScheduleView: React.FC = () => {
     Boolean(searchQuery.trim())
   ].filter(Boolean).length;
 
-  const totalPages = Math.ceil(filteredCables.length / pageSize) || 1;
-  const paginatedCables = filteredCables.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = pageSize === -1 ? 1 : (Math.ceil(filteredCables.length / pageSize) || 1);
+  const paginatedCables = pageSize === -1 
+    ? filteredCables 
+    : filteredCables.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleExportCsv = () => {
     const headers = [
@@ -588,14 +590,36 @@ export const ScheduleView: React.FC = () => {
       </div>
 
       {/* Result Metrics */}
-      <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-        <div>
-          Showing <strong className="text-white">{filteredCables.length}</strong> of{' '}
-          <strong className="text-slate-300">{cables.length}</strong> cables from spreadsheet
-          {activeFiltersCount > 0 && <span className="text-amber-400 ml-1.5 font-semibold">(Filtered)</span>}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-400 px-1">
+        <div className="flex items-center gap-2">
+          <span>
+            Showing <strong className="text-white">{filteredCables.length}</strong> of{' '}
+            <strong className="text-slate-300">{cables.length}</strong> cables from spreadsheet
+            {activeFiltersCount > 0 && <span className="text-amber-400 ml-1.5 font-semibold">(Filtered)</span>}
+          </span>
         </div>
-        <div className="font-medium">
-          Page <strong className="text-white">{currentPage}</strong> of <strong className="text-white">{totalPages}</strong>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <span>Show:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-slate-950 border border-slate-700 text-white rounded-lg px-2 py-0.5 text-xs font-semibold focus:outline-none focus:border-amber-400"
+            >
+              <option value={50}>50 rows</option>
+              <option value={100}>100 rows</option>
+              <option value={200}>200 rows</option>
+              <option value={-1}>All ({filteredCables.length} rows)</option>
+            </select>
+          </div>
+          {pageSize !== -1 && totalPages > 1 && (
+            <div className="font-medium text-slate-400">
+              Page <strong className="text-white">{currentPage}</strong> of <strong className="text-white">{totalPages}</strong>
+            </div>
+          )}
         </div>
       </div>
 
@@ -937,7 +961,7 @@ export const ScheduleView: React.FC = () => {
       )}
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
+      {totalPages > 1 && pageSize !== -1 && (
         <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-3 rounded-2xl text-xs shadow-lg">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
