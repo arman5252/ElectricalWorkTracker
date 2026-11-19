@@ -436,27 +436,30 @@ export const CableDetailModal: React.FC = () => {
 
           {/* Action buttons */}
           <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <a
-                href={settings.spreadsheetUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-slate-400 hover:text-emerald-400 flex items-center gap-1 text-[11px]"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>Open in Sheet</span>
-              </a>
-              <span className="text-slate-600">•</span>
-              <a
-                href={settings.driveFolderUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-slate-400 hover:text-sky-400 flex items-center gap-1 text-[11px]"
-              >
-                <FolderGit2 className="w-3.5 h-3.5" />
-                <span>Open Drive Folder</span>
-              </a>
-            </div>
+            {/* Sheet & Drive links - Admin Profile Only */}
+            {currentUser?.role === 'admin' ? (
+              <div className="flex items-center gap-2">
+                <a
+                  href={settings.spreadsheetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-emerald-400 flex items-center gap-1 text-[11px]"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Open in Sheet</span>
+                </a>
+                <span className="text-slate-600">•</span>
+                <a
+                  href={settings.driveFolderUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-sky-400 flex items-center gap-1 text-[11px]"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5" />
+                  <span>Open Drive Folder</span>
+                </a>
+              </div>
+            ) : <div />}
 
             <div className="flex items-center gap-2">
               <button

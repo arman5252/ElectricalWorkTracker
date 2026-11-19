@@ -80,14 +80,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
                   </>
                 )}
                 {liveSyncStatus === 'error' && (
-                  <button 
-                    onClick={onOpenSettings}
-                    className="flex items-center gap-1 text-[11px] font-semibold text-rose-400 hover:underline"
-                    title={liveSyncError || 'Click to verify Google Sheet sharing permissions'}
-                  >
-                    <AlertCircle className="w-3 h-3 text-rose-400" />
-                    <span>Real-Time Standby</span>
-                  </button>
+                  currentUser?.role === 'admin' ? (
+                    <button 
+                      onClick={onOpenSettings}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-rose-400 hover:underline"
+                      title={liveSyncError || 'Click to verify Google Sheet sharing permissions'}
+                    >
+                      <AlertCircle className="w-3 h-3 text-rose-400" />
+                      <span>Real-Time Standby</span>
+                    </button>
+                  ) : (
+                    <div 
+                      className="flex items-center gap-1 text-[11px] font-semibold text-rose-400"
+                      title={liveSyncError || 'Google Sheet sync standby'}
+                    >
+                      <AlertCircle className="w-3 h-3 text-rose-400" />
+                      <span>Real-Time Standby</span>
+                    </div>
+                  )
                 )}
                 {liveSyncStatus === 'paused' && (
                   <span className="text-[11px] text-slate-400">Real-time paused</span>
@@ -167,41 +177,47 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
             <span>Refresh Sheet</span>
           </button>
 
-          {/* Direct link to Google Sheet */}
-          <a
-            href={settings.spreadsheetUrl}
-            target="_blank"
-            rel="noreferrer"
-            title="Open Live Google Spreadsheet"
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold transition-colors"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Sheet</span>
-            <ExternalLink className="w-3 h-3 opacity-60" />
-          </a>
+          {/* Direct link to Google Sheet - Admin Profile Only */}
+          {currentUser?.role === 'admin' && (
+            <a
+              href={settings.spreadsheetUrl}
+              target="_blank"
+              rel="noreferrer"
+              title="Open Live Google Spreadsheet (Admin Only)"
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold transition-colors"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">Sheet</span>
+              <ExternalLink className="w-3 h-3 opacity-60" />
+            </a>
+          )}
 
-          {/* Direct link to Drive folder */}
-          <a
-            href={settings.driveFolderUrl}
-            target="_blank"
-            rel="noreferrer"
-            title="Open Google Drive Attachments Folder"
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-400 rounded-lg text-xs font-semibold transition-colors"
-          >
-            <FolderGit2 className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Drive</span>
-            <ExternalLink className="w-3 h-3 opacity-60" />
-          </a>
+          {/* Direct link to Drive folder - Admin Profile Only */}
+          {currentUser?.role === 'admin' && (
+            <a
+              href={settings.driveFolderUrl}
+              target="_blank"
+              rel="noreferrer"
+              title="Open Google Drive Attachments Folder (Admin Only)"
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-400 rounded-lg text-xs font-semibold transition-colors"
+            >
+              <FolderGit2 className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">Drive</span>
+              <ExternalLink className="w-3 h-3 opacity-60" />
+            </a>
+          )}
 
-          {/* Settings button */}
-          <button
-            id="open-settings-button"
-            onClick={onOpenSettings}
-            title="Configure Real-Time Sync & Google Cloud DB"
-            className="p-1.5 text-slate-400 hover:text-white bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 rounded-lg transition-colors"
-          >
-            <SettingsIcon className="w-4 h-4" />
-          </button>
+          {/* Settings button - Admin Profile Only */}
+          {currentUser?.role === 'admin' && (
+            <button
+              id="open-settings-button"
+              onClick={onOpenSettings}
+              title="Configure Real-Time Sync & Google Cloud DB (Admin Only)"
+              className="p-1.5 text-slate-400 hover:text-white bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 rounded-lg transition-colors"
+            >
+              <SettingsIcon className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Staff Authentication / Profile Badge */}
           <div className="flex items-center gap-1.5 pl-2 border-l border-slate-800">

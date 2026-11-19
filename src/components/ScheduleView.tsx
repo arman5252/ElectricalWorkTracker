@@ -453,36 +453,43 @@ export const ScheduleView: React.FC = () => {
               </span>
             )}
 
-            {/* Direct Excel Download button */}
-            <button
-              onClick={downloadExcelFile}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-emerald-600/20"
-              title="Download live synchronized Excel spreadsheet (.xlsx)"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Download Excel</span>
-            </button>
+            {/* Direct Excel Download button - Visible ONLY for logged-in profiles: Admin, Nayem, Mossadek, Fahad */}
+            {currentUser && (
+              <button
+                onClick={downloadExcelFile}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-emerald-600/20"
+                title="Download live synchronized Excel spreadsheet (.xlsx)"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Download Excel</span>
+              </button>
+            )}
 
-            {/* Import Excel button */}
-            <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-sm cursor-pointer">
-              <Upload className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Import Excel</span>
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleImportExcel}
-                className="hidden"
-              />
-            </label>
+            {/* Import Excel button - Visible ONLY for Admin Profile */}
+            {currentUser?.role === 'admin' && (
+              <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-sm cursor-pointer" title="Import Excel (Admin Only)">
+                <Upload className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Import Excel</span>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleImportExcel}
+                  className="hidden"
+                />
+              </label>
+            )}
 
-            <button
-              onClick={handleExportCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-sm"
-              title="Download CSV spreadsheet"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export CSV</span>
-            </button>
+            {/* Export CSV button - Visible ONLY for logged-in profiles: Admin, Nayem, Mossadek, Fahad */}
+            {currentUser && (
+              <button
+                onClick={handleExportCsv}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-sm"
+                title="Download CSV spreadsheet"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Export CSV</span>
+              </button>
+            )}
           </div>
         </div>
 

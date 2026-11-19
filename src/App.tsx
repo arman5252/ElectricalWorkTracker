@@ -12,7 +12,7 @@ import { LoginModal } from './components/LoginModal';
 import { ToastContainer } from './components/ToastContainer';
 
 export const App: React.FC = () => {
-  const { activeView, isLoginModalOpen, setIsLoginModalOpen } = useApp();
+  const { activeView, isLoginModalOpen, setIsLoginModalOpen, currentUser } = useApp();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
@@ -35,11 +35,13 @@ export const App: React.FC = () => {
       {/* Cable Details Drawer / Inspection Modal */}
       <CableDetailModal />
 
-      {/* Google Spreadsheet & Drive Cloud Integration Modal */}
-      <GoogleSyncModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
+      {/* Google Spreadsheet & Drive Cloud Integration Modal - Admin Profile Only */}
+      {currentUser?.role === 'admin' && (
+        <GoogleSyncModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      )}
 
       {/* Staff Authentication Login Modal */}
       <LoginModal

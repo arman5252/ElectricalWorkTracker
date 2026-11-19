@@ -19,7 +19,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenSettings }) => {
-  const { state, activeTab, setActiveTab } = useApp();
+  const { state, activeTab, setActiveTab, currentUser } = useApp();
 
   const activeWorkOrdersCount = state.workOrders.filter(
     w => w.status === 'In Progress' || w.status === 'Scheduled' || w.status === 'Testing & Commissioning'
@@ -128,40 +128,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenSettings }) => {
           Google Sheets stores tabular data, and Google Drive holds field photos & drawings.
         </p>
 
-        <div className="space-y-1.5 pt-1 border-t border-slate-800 text-[11px]">
-          <a
-            href={state.settings.spreadsheetUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between text-slate-300 hover:text-emerald-400 transition-colors py-0.5"
-          >
-            <span className="flex items-center gap-1.5">
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-              Spreadsheet DB
-            </span>
-            <ExternalLink className="w-3 h-3 text-slate-500" />
-          </a>
+        {currentUser?.role === 'admin' && (
+          <>
+            <div className="space-y-1.5 pt-1 border-t border-slate-800 text-[11px]">
+              <a
+                href={state.settings.spreadsheetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between text-slate-300 hover:text-emerald-400 transition-colors py-0.5"
+              >
+                <span className="flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  Spreadsheet DB
+                </span>
+                <ExternalLink className="w-3 h-3 text-slate-500" />
+              </a>
 
-          <a
-            href={state.settings.driveFolderUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between text-slate-300 hover:text-sky-400 transition-colors py-0.5"
-          >
-            <span className="flex items-center gap-1.5">
-              <FolderGit2 className="w-3.5 h-3.5 text-sky-400" />
-              Drive Storage
-            </span>
-            <ExternalLink className="w-3 h-3 text-slate-500" />
-          </a>
-        </div>
+              <a
+                href={state.settings.driveFolderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between text-slate-300 hover:text-sky-400 transition-colors py-0.5"
+              >
+                <span className="flex items-center gap-1.5">
+                  <FolderGit2 className="w-3.5 h-3.5 text-sky-400" />
+                  Drive Storage
+                </span>
+                <ExternalLink className="w-3 h-3 text-slate-500" />
+              </a>
+            </div>
 
-        <button
-          onClick={onOpenSettings}
-          className="mt-3 w-full py-1 px-2 text-[11px] font-medium text-center text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded border border-slate-700 transition-colors"
-        >
-          Manage Web App API
-        </button>
+            <button
+              onClick={onOpenSettings}
+              className="mt-3 w-full py-1 px-2 text-[11px] font-medium text-center text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded border border-slate-700 transition-colors"
+            >
+              Manage Web App API
+            </button>
+          </>
+        )}
       </div>
     </aside>
   );
