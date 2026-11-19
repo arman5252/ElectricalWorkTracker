@@ -1,0 +1,49 @@
+import React, { useState } from 'react';
+import { useApp } from './context/AppContext';
+import { Navbar } from './components/Navbar';
+import { ScheduleStats } from './components/ScheduleStats';
+import { ScheduleView } from './components/ScheduleView';
+import { VisualChartsView } from './components/VisualChartsView';
+import { BoqView } from './components/BoqView';
+import { SpecsView } from './components/SpecsView';
+import { CableDetailModal } from './components/CableDetailModal';
+import { GoogleSyncModal } from './components/GoogleSyncModal';
+import { ToastContainer } from './components/ToastContainer';
+
+export const App: React.FC = () => {
+  const { activeView } = useApp();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200 engineering-grid">
+      {/* Top Navbar */}
+      <Navbar onOpenSettings={() => setIsSettingsOpen(true)} />
+
+      {/* Main Container - Full Widescreen for 14-Column Engineering Spreadsheet */}
+      <main className="flex-1 max-w-[1920px] mx-auto w-full p-3 sm:p-5 lg:p-6 space-y-5">
+        {/* KPI & Quick Status Bar */}
+        <ScheduleStats />
+
+        {/* Dynamic View */}
+        {activeView === 'schedule' && <ScheduleView />}
+        {activeView === 'analytics' && <VisualChartsView />}
+        {activeView === 'boq' && <BoqView />}
+        {activeView === 'specs' && <SpecsView />}
+      </main>
+
+      {/* Cable Details Drawer / Inspection Modal */}
+      <CableDetailModal />
+
+      {/* Google Spreadsheet & Drive Cloud Integration Modal */}
+      <GoogleSyncModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
+
+      {/* Toast Alerts */}
+      <ToastContainer />
+    </div>
+  );
+};
+
+export default App;

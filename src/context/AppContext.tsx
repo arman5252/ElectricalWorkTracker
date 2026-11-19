@@ -1,0 +1,625 @@
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { CableEntry, CableLayingStatus, CommissioningStatus, BoqItem, ProjectSettings } from '../types';
+import { initialCables, boqSummary, projectMeta } from '../data/cableData';
+import { fetchLiveSheetData, LiveSyncResult } from '../services/sheetLiveSync';
+
+const STORAGE_KEY = 'volttrack_cables_schedule_state_v3_exact_phases';
+const SETTINGS_KEY = 'volttrack_settings_state_v3';
+
+interface Toast {
+  id: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  message: string;
+}
+
+interface AppContextType {
+  cables: CableEntry[];
+  boq: BoqItem[];
+  settings: ProjectSettings;
+  activeView: 'schedule' | 'boq' | 'analytics' | 'specs';
+  setActiveView: (view: 'schedule' | 'boq' | 'analytics' | 'specs') => void;
+  selectedCable: CableEntry | null;
+  setSelectedCable: (cable: CableEntry | null) => void;
+  
+  // Real-time Live Sync State
+  isLiveSyncEnabled: boolean;
+  setIsLiveSyncEnabled: (enabled: boolean) => void;
+  liveSyncIntervalSeconds: number;
+  setLiveSyncIntervalSeconds: (seconds: number) => void;
+  lastLiveSyncTimestamp: string | null;
+  liveSyncStatus: 'live' | 'syncing' | 'error' | 'paused';
+  liveSyncError: string | null;
+  manualRefreshFromSheet: () => Promise<void>;
+
+  // Filters
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  scheduleTypeFilter: string;
+  setScheduleTypeFilter: (val: string) => void;
+  sectionFilter: string;
+  setSectionFilter: (val: string) => void;
+  fromLocationFilter: string;
+  setFromLocationFilter: (val: string) => void;
+  toLocationFilter: string;
+  setToLocationFilter: (val: string) => void;
+  cableSizeFilter: string;
+  setCableSizeFilter: (val: string) => void;
+  cableTypeFilter: string;
+  setCableTypeFilter: (val: string) => void;
+  
+  // 3-Stage Progress & Approval Filters
+  cableLayingFilter: string;
+  setCableLayingFilter: (val: string) => void;
+  preCommissioningFilter: string;
+  setPreCommissioningFilter: (val: string) => void;
+  commissioningFilter: string;
+  setCommissioningFilter: (val: string) => void;
+  approverFilter: string;
+  setApproverFilter: (val: string) => void;
+
+  resetAllFilters: () => void;
+
+  // Actions for the 3 stages & approvals
+  updateCableLayingStatus: (id: string, status: CableLayingStatus, remarks?: string) => void;
+  updatePreCommissioningStatus: (id: string, status: CommissioningStatus, remarks?: string) => void;
+  updateCommissioningStatus: (id: string, status: CommissioningStatus, remarks?: string) => void;
+  updateApprovers: (id: string, level: 1 | 2 | 3, name: string) => void;
+  updateCable: (id: string, updates: Partial<CableEntry>) => void;
+  importSpreadsheetData: (newCables: CableEntry[]) => void;
+  resetToOriginalSpreadsheet: () => void;
+  updateSettings: (newSettings: Partial<ProjectSettings>) => void;
+  uploadDriveDrawing: (file: File) => Promise<string | null>;
+
+  // Sync state
+  isSyncing: boolean;
+  setIsSyncing: (s: boolean) => void;
+  triggerGoogleSync: (direction: 'push' | 'pull') => Promise<boolean>;
+  downloadExcelFile: () => void;
+  lastExcelSaveTime: string | null;
+
+  // Toast notifications
+  toasts: Toast[];
+  showToast: (message: string, type?: Toast['type']) => void;
+  dismissToast: (id: string) => void;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [cables, setCables] = useState<CableEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].cableLayingStatus) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load local storage:', e);
+    }
+    return initialCables;
+  });
+
+  const [boq] = useState<BoqItem[]>(boqSummary);
+  const [settings, setSettings] = useState<ProjectSettings>(() => {
+    try {
+      const saved = localStorage.getItem(SETTINGS_KEY);
+      if (saved) {
+        return { ...projectMeta, ...JSON.parse(saved) };
+      }
+    } catch (e) {}
+    return {
+      ...projectMeta,
+      webAppUrl: '',
+      lastSyncTimestamp: null
+    };
+  });
+
+  const [activeView, setActiveView] = useState<'schedule' | 'boq' | 'analytics' | 'specs'>('schedule');
+  const [selectedCable, setSelectedCable] = useState<CableEntry | null>(null);
+
+  // Real-Time Live Sync Settings
+  const [isLiveSyncEnabled, setIsLiveSyncEnabled] = useState<boolean>(true);
+  const [liveSyncIntervalSeconds, setLiveSyncIntervalSeconds] = useState<number>(10);
+  const [lastLiveSyncTimestamp, setLastLiveSyncTimestamp] = useState<string | null>(null);
+  const [liveSyncStatus, setLiveSyncStatus] = useState<'live' | 'syncing' | 'error' | 'paused'>('live');
+  const [liveSyncError, setLiveSyncError] = useState<string | null>(null);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [scheduleTypeFilter, setScheduleTypeFilter] = useState('All');
+  const [sectionFilter, setSectionFilter] = useState('All');
+  const [fromLocationFilter, setFromLocationFilter] = useState('All');
+  const [toLocationFilter, setToLocationFilter] = useState('All');
+  const [cableSizeFilter, setCableSizeFilter] = useState('All');
+  const [cableTypeFilter, setCableTypeFilter] = useState('All');
+
+  // Exact 3 Stages & Approval Filters
+  const [cableLayingFilter, setCableLayingFilter] = useState('All');
+  const [preCommissioningFilter, setPreCommissioningFilter] = useState('All');
+  const [commissioningFilter, setCommissioningFilter] = useState('All');
+  const [approverFilter, setApproverFilter] = useState('All');
+
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cables));
+    } catch (e) {
+      console.warn('Failed to save cables to localStorage:', e);
+    }
+  }, [cables]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) {}
+  }, [settings]);
+
+  const showToast = (message: string, type: Toast['type'] = 'info') => {
+    const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
+    setToasts(prev => [...prev, { id, type, message }]);
+    setTimeout(() => {
+      dismissToast(id);
+    }, 4500);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  const performLiveSync = async (silent = true): Promise<LiveSyncResult> => {
+    setLiveSyncStatus('syncing');
+    const res = await fetchLiveSheetData(settings.spreadsheetUrl, settings.webAppUrl);
+
+    if (res.success && res.cables && res.cables.length > 0) {
+      setLastLiveSyncTimestamp(res.timestamp);
+      setLiveSyncStatus('live');
+      setLiveSyncError(null);
+
+      setCables(prevCables => {
+        const prevMap = new Map(prevCables.map(c => [c.cableTag, c]));
+        const updated = res.cables!.map(incoming => {
+          const existing = prevMap.get(incoming.cableTag);
+          if (existing) {
+            return {
+              ...incoming,
+              cableLayingStatus: existing.cableLayingStatus || incoming.cableLayingStatus || 'Complete By VEL',
+              preCommissioningStatus: existing.preCommissioningStatus || incoming.preCommissioningStatus || 'Progress',
+              commissioningStatus: existing.commissioningStatus || incoming.commissioningStatus || 'Pending',
+              approvedBy1: existing.approvedBy1 || incoming.approvedBy1,
+              approvedBy2: existing.approvedBy2 || incoming.approvedBy2,
+              approvedBy3: existing.approvedBy3 || incoming.approvedBy3,
+              drawingUrl: existing.drawingUrl || incoming.drawingUrl,
+              notes: existing.notes || incoming.notes
+            };
+          }
+          return incoming;
+        });
+
+        const incomingTags = new Set(res.cables!.map(c => c.cableTag));
+        const nonOverlapping = prevCables.filter(c => !incomingTags.has(c.cableTag));
+        return [...updated, ...nonOverlapping];
+      });
+
+      if (!silent) {
+        showToast(`Real-time update: Synced ${res.cables.length} cables from sheet!`, 'success');
+      }
+    } else {
+      setLiveSyncStatus('error');
+      setLiveSyncError(res.error || 'Unable to fetch from sheet');
+      if (!silent) {
+        showToast(res.error || 'Failed to update from sheet.', 'warning');
+      }
+    }
+
+    return res;
+  };
+
+  const manualRefreshFromSheet = async () => {
+    showToast('Fetching latest updates from Google Sheet...', 'info');
+    await performLiveSync(false);
+  };
+
+  const pollTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!isLiveSyncEnabled) {
+      setLiveSyncStatus('paused');
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      return;
+    }
+
+    performLiveSync(true);
+
+    const intervalMs = Math.max(5, liveSyncIntervalSeconds) * 1000;
+    pollTimerRef.current = setInterval(() => {
+      performLiveSync(true);
+    }, intervalMs);
+
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, [isLiveSyncEnabled, liveSyncIntervalSeconds, settings.spreadsheetUrl, settings.webAppUrl]);
+
+  const [lastExcelSaveTime, setLastExcelSaveTime] = useState<string | null>(null);
+  const isInitialMount = useRef(true);
+  const saveDebounceTimer = useRef<any>(null);
+
+  // Sync cable changes to Google Sheet Web App (if URL configured)
+  const syncCableToGoogleSheet = async (cable: CableEntry) => {
+    if (!settings.webAppUrl) return;
+    try {
+      await fetch(settings.webAppUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'updateCable',
+          cableTag: cable.cableTag,
+          cableLayingStatus: cable.cableLayingStatus,
+          cableLayingRemarks: cable.cableLayingRemarks || '',
+          preCommissioningStatus: cable.preCommissioningStatus,
+          preCommissioningRemarks: cable.preCommissioningRemarks || '',
+          commissioningStatus: cable.commissioningStatus,
+          commissioningRemarks: cable.commissioningRemarks || '',
+          approvedBy1: cable.approvedBy1 || '',
+          approvedBy2: cable.approvedBy2 || '',
+          approvedBy3: cable.approvedBy3 || '',
+        })
+      });
+      console.log(`[Google Sheet Live Write] Saved ${cable.cableTag} to Google Sheet`);
+    } catch (e) {
+      console.warn(`[Google Sheet Write Notice]`, e);
+    }
+  };
+
+  // Auto-save to local Excel file on any dashboard edit
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      fetch('/api/save-excel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cables })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) setLastExcelSaveTime(d.timestamp);
+      })
+      .catch(() => {});
+      return;
+    }
+
+    if (saveDebounceTimer.current) clearTimeout(saveDebounceTimer.current);
+
+    saveDebounceTimer.current = setTimeout(() => {
+      fetch('/api/save-excel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cables })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setLastExcelSaveTime(data.timestamp);
+          console.log('[Live Excel Sync] Stored in Excel:', data.downloadsFilePath);
+        }
+      })
+      .catch(err => console.error('[Excel Save Error]', err));
+    }, 350);
+
+    return () => {
+      if (saveDebounceTimer.current) clearTimeout(saveDebounceTimer.current);
+    };
+  }, [cables]);
+
+  const downloadExcelFile = () => {
+    window.location.href = '/api/download-excel';
+    showToast('Downloading Bergen Engines Cable Schedule Excel (.xlsx)...', 'success');
+  };
+
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    setScheduleTypeFilter('All');
+    setSectionFilter('All');
+    setFromLocationFilter('All');
+    setToLocationFilter('All');
+    setCableSizeFilter('All');
+    setCableTypeFilter('All');
+    setCableLayingFilter('All');
+    setPreCommissioningFilter('All');
+    setCommissioningFilter('All');
+    setApproverFilter('All');
+    showToast('All filters cleared', 'info');
+  };
+
+  // Actions for 3 Stages & Approvals with Real-time Two-Way Write
+  const updateCableLayingStatus = (id: string, status: CableLayingStatus, remarks?: string) => {
+    let targetUpdated: CableEntry | null = null;
+    setCables(prev => prev.map(c => {
+      if (c.id === id) {
+        const updated = { 
+          ...c, 
+          cableLayingStatus: status, 
+          cableLayingRemarks: remarks !== undefined ? remarks : c.cableLayingRemarks,
+          updatedAt: new Date().toISOString() 
+        };
+        targetUpdated = updated;
+        if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+        return updated;
+      }
+      return c;
+    }));
+    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
+    showToast(`Cable Laying status set to "${status}" (Saving to Excel...)`, 'success');
+  };
+
+  const updatePreCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
+    let targetUpdated: CableEntry | null = null;
+    setCables(prev => prev.map(c => {
+      if (c.id === id) {
+        const updated = { 
+          ...c, 
+          preCommissioningStatus: status, 
+          preCommissioningRemarks: remarks !== undefined ? remarks : c.preCommissioningRemarks,
+          updatedAt: new Date().toISOString() 
+        };
+        targetUpdated = updated;
+        if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+        return updated;
+      }
+      return c;
+    }));
+    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
+    showToast(`Pre-Commissioning status set to "${status}" (Saving to Excel...)`, 'success');
+  };
+
+  const updateCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
+    let targetUpdated: CableEntry | null = null;
+    setCables(prev => prev.map(c => {
+      if (c.id === id) {
+        const updated = { 
+          ...c, 
+          commissioningStatus: status, 
+          commissioningRemarks: remarks !== undefined ? remarks : c.commissioningRemarks,
+          updatedAt: new Date().toISOString() 
+        };
+        targetUpdated = updated;
+        if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+        return updated;
+      }
+      return c;
+    }));
+    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
+    showToast(`Commissioning status set to "${status}" (Saving to Excel...)`, 'success');
+  };
+
+  const updateApprovers = (id: string, level: 1 | 2 | 3, name: string) => {
+    let targetUpdated: CableEntry | null = null;
+    setCables(prev => prev.map(c => {
+      if (c.id === id) {
+        const updated = { 
+          ...c, 
+          approvedBy1: level === 1 ? name : c.approvedBy1,
+          approvedBy2: level === 2 ? name : c.approvedBy2,
+          approvedBy3: level === 3 ? name : c.approvedBy3,
+          updatedAt: new Date().toISOString() 
+        };
+        targetUpdated = updated;
+        if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+        return updated;
+      }
+      return c;
+    }));
+    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
+    showToast(`Sign-off updated for Level ${level} (Saving to Excel...)`, 'success');
+  };
+
+  const updateCable = (id: string, updates: Partial<CableEntry>) => {
+    let targetUpdated: CableEntry | null = null;
+    setCables(prev => prev.map(c => {
+      if (c.id === id) {
+        const updated = { ...c, ...updates, updatedAt: new Date().toISOString() };
+        targetUpdated = updated;
+        if (selectedCable && selectedCable.id === id) {
+          setSelectedCable(updated);
+        }
+        return updated;
+      }
+      return c;
+    }));
+    if (targetUpdated) syncCableToGoogleSheet(targetUpdated);
+    showToast(`Cable updated & storing to Excel...`, 'info');
+  };
+
+  const importSpreadsheetData = (newCables: CableEntry[]) => {
+    setCables(newCables);
+    showToast(`Loaded ${newCables.length} cables from spreadsheet!`, 'success');
+  };
+
+  const resetToOriginalSpreadsheet = () => {
+    setCables(initialCables);
+    localStorage.removeItem(STORAGE_KEY);
+    showToast(`Restored all ${initialCables.length} cables from original project schedule!`, 'info');
+  };
+
+  const updateSettings = (newSettings: Partial<ProjectSettings>) => {
+    setSettings(prev => ({ ...prev, ...newSettings }));
+    showToast('Settings updated', 'success');
+  };
+
+  const uploadDriveDrawing = async (file: File): Promise<string | null> => {
+    if (!settings.webAppUrl) {
+      showToast('Connect Google Apps Script Web App in Settings to upload directly to Drive folder.', 'warning');
+      return null;
+    }
+
+    setIsSyncing(true);
+    showToast('Uploading to Google Drive Folder...', 'info');
+
+    try {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const base64Data = await base64Promise;
+      const res = await fetch(settings.webAppUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'uploadFile',
+          fileName: `Drawing_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
+          mimeType: file.type || 'image/jpeg',
+          base64Data
+        })
+      });
+
+      const json = await res.json();
+      if (json.success && json.url) {
+        showToast('Uploaded to Google Drive!', 'success');
+        return json.url;
+      } else {
+        showToast(json.error || 'Upload failed', 'error');
+        return null;
+      }
+    } catch (e: any) {
+      showToast(`Upload failed: ${e.message}`, 'error');
+      return null;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const triggerGoogleSync = async (direction: 'push' | 'pull'): Promise<boolean> => {
+    if (!settings.webAppUrl) {
+      showToast('Please set your Google Apps Script Web App URL first.', 'warning');
+      return false;
+    }
+
+    setIsSyncing(true);
+    showToast(direction === 'push' ? 'Pushing cable schedule to Google Sheets...' : 'Pulling schedule from Google Sheets...', 'info');
+
+    try {
+      if (direction === 'push') {
+        const res = await fetch(settings.webAppUrl, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'syncCables',
+            cables: cables,
+            settings: settings
+          })
+        });
+
+        const json = await res.json();
+        if (json.success) {
+          const nowStr = new Date().toLocaleTimeString();
+          setSettings(prev => ({ ...prev, lastSyncTimestamp: nowStr }));
+          showToast(`Google Sheets updated successfully at ${nowStr}!`, 'success');
+          return true;
+        } else {
+          showToast(`Push failed: ${json.error || 'Server error'}`, 'error');
+          return false;
+        }
+      } else {
+        const url = new URL(settings.webAppUrl);
+        url.searchParams.set('action', 'getCables');
+        const res = await fetch(url.toString(), { method: 'GET', mode: 'cors' });
+        const json = await res.json();
+        if (json.success && json.data && json.data.cables) {
+          setCables(json.data.cables);
+          const nowStr = new Date().toLocaleTimeString();
+          setSettings(prev => ({ ...prev, lastSyncTimestamp: nowStr }));
+          showToast(`Pulled ${json.data.cables.length} cables from Google Sheets!`, 'success');
+          return true;
+        } else {
+          showToast(`Pull error: ${json.error || 'No cables returned'}`, 'error');
+          return false;
+        }
+      }
+    } catch (err: any) {
+      showToast(`Sync exception: ${err.message}`, 'error');
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  return (
+    <AppContext.Provider value={{
+      cables,
+      boq,
+      settings,
+      activeView,
+      setActiveView,
+      selectedCable,
+      setSelectedCable,
+      isLiveSyncEnabled,
+      setIsLiveSyncEnabled,
+      liveSyncIntervalSeconds,
+      setLiveSyncIntervalSeconds,
+      lastLiveSyncTimestamp,
+      liveSyncStatus,
+      liveSyncError,
+      manualRefreshFromSheet,
+      searchQuery,
+      setSearchQuery,
+      scheduleTypeFilter,
+      setScheduleTypeFilter,
+      sectionFilter,
+      setSectionFilter,
+      fromLocationFilter,
+      setFromLocationFilter,
+      toLocationFilter,
+      setToLocationFilter,
+      cableSizeFilter,
+      setCableSizeFilter,
+      cableTypeFilter,
+      setCableTypeFilter,
+      cableLayingFilter,
+      setCableLayingFilter,
+      preCommissioningFilter,
+      setPreCommissioningFilter,
+      commissioningFilter,
+      setCommissioningFilter,
+      approverFilter,
+      setApproverFilter,
+      resetAllFilters,
+      updateCableLayingStatus,
+      updatePreCommissioningStatus,
+      updateCommissioningStatus,
+      updateApprovers,
+      updateCable,
+      importSpreadsheetData,
+      resetToOriginalSpreadsheet,
+      updateSettings,
+      uploadDriveDrawing,
+      isSyncing,
+      setIsSyncing,
+      triggerGoogleSync,
+      downloadExcelFile,
+      lastExcelSaveTime,
+      toasts,
+      showToast,
+      dismissToast
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
