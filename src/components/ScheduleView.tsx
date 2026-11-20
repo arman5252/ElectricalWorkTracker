@@ -21,7 +21,8 @@ import {
   Upload,
   PlusCircle,
   Lock,
-  ShieldCheck
+  ShieldCheck,
+  MessageSquare
 } from 'lucide-react';
 
 export const normalizeStatus = (status?: string): string => {
@@ -160,6 +161,40 @@ export const ScheduleView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(100);
 
+  // Approval Sign-off Dialog with Note Option before approval
+  interface ApprovalDialogState {
+    cable: CableEntry;
+    level: 1 | 2 | 3;
+    signerName: string;
+    action: 'sign' | 'revoke';
+  }
+
+  const [approvalDialog, setApprovalDialog] = useState<ApprovalDialogState | null>(null);
+  const [approvalNoteInput, setApprovalNoteInput] = useState('');
+
+  const openApprovalModal = (cable: CableEntry, level: 1 | 2 | 3, signerName: string) => {
+    setApprovalDialog({ cable, level, signerName, action: 'sign' });
+    setApprovalNoteInput(cable.notes || '');
+  };
+
+  const openRevokeModal = (cable: CableEntry, level: 1 | 2 | 3, signerName: string) => {
+    setApprovalDialog({ cable, level, signerName, action: 'revoke' });
+  };
+
+  const handleConfirmApproval = async () => {
+    if (!approvalDialog) return;
+    const { cable, level, signerName, action } = approvalDialog;
+    if (action === 'sign') {
+      if (approvalNoteInput !== (cable.notes || '')) {
+        await updateCable(cable.id, { notes: approvalNoteInput });
+      }
+      await updateApprovers(cable.id, level, signerName);
+    } else {
+      await updateApprovers(cable.id, level, '');
+    }
+    setApprovalDialog(null);
+  };
+
   // Extract unique options
   const uniqueSections = useMemo(() => {
     return Array.from(new Set(cables.map(c => c.section).filter(Boolean))).sort();
@@ -264,11 +299,9 @@ export const ScheduleView: React.FC = () => {
       'CABLE TYPE',
       'DESCRIPTION',
       'CABLE LAYING STATUS',
-      'CABLE LAYING REMARKS',
       'PRE-COMMISSIONING STATUS',
-      'PRE-COMMISSIONING REMARKS',
       'COMMISSIONING STATUS',
-      'COMMISSIONING REMARKS',
+      'STAFF NOTE (BEFORE APPROVAL)',
       'APPROVE BY (LEVEL 1)',
       'APPROVE BY (LEVEL 2)',
       'APPROVE BY (LEVEL 3)'
@@ -287,11 +320,9 @@ export const ScheduleView: React.FC = () => {
       `"${c.cableType}"`,
       `"${c.description.replace(/"/g, '""')}"`,
       `"${c.cableLayingStatus}"`,
-      `"${c.cableLayingRemarks || ''}"`,
       `"${c.preCommissioningStatus}"`,
-      `"${c.preCommissioningRemarks || ''}"`,
       `"${c.commissioningStatus}"`,
-      `"${c.commissioningRemarks || ''}"`,
+      `"${(c.notes || '').replace(/"/g, '""')}"`,
       `"${c.approvedBy1 || ''}"`,
       `"${c.approvedBy2 || ''}"`,
       `"${c.approvedBy3 || ''}"`
@@ -687,14 +718,17 @@ export const ScheduleView: React.FC = () => {
                   <th colSpan={4} className="py-2.5 px-3.5 border-r border-slate-800/80">
                     CABLE SPECIFICATION & ROUTING
                   </th>
-                  <th colSpan={2} className="py-2.5 px-3.5 text-center bg-[#13325c] border-r border-slate-800/80">
+                  <th colSpan={1} className="py-2.5 px-3.5 text-center bg-[#13325c] border-r border-slate-800/80">
                     Cable Laying
                   </th>
-                  <th colSpan={2} className="py-2.5 px-3.5 text-center bg-[#173d70] border-r border-slate-800/80">
+                  <th colSpan={1} className="py-2.5 px-3.5 text-center bg-[#173d70] border-r border-slate-800/80">
                     Pre-Commissioning
                   </th>
-                  <th colSpan={2} className="py-2.5 px-3.5 text-center bg-[#13325c] border-r border-slate-800/80">
+                  <th colSpan={1} className="py-2.5 px-3.5 text-center bg-[#13325c] border-r border-slate-800/80">
                     Commissioning
+                  </th>
+                  <th colSpan={1} className="py-2.5 px-3.5 text-center bg-[#173d70] border-r border-slate-800/80 text-amber-300">
+                    Staff Verification Note
                   </th>
                   <th colSpan={3} className="py-2.5 px-3.5 text-center bg-[#0f2444]">
                     Approve By
@@ -706,20 +740,20 @@ export const ScheduleView: React.FC = () => {
                 <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800 font-bold sticky top-0 z-10 shadow-sm">
                   <th className="py-2.5 px-3 w-12 text-slate-500 text-center">Sr #</th>
                   <th className="py-2.5 px-3 w-44">Cable Designation</th>
-                  <th className="py-2.5 px-3 w-48">From (Origin)</th>
-                  <th className="py-2.5 px-3 w-48 border-r border-slate-800">To (Destination)</th>
+                  <th className="py-2.5 px-3 w-44">From (Origin)</th>
+                  <th className="py-2.5 px-3 w-44 border-r border-slate-800">To (Destination)</th>
                   
                   {/* Cable Laying subheaders */}
-                  <th className="py-2.5 px-3 w-44 text-center bg-slate-950/80">Status</th>
-                  <th className="py-2.5 px-3 w-36 border-r border-slate-800 bg-slate-950/80">Remarks</th>
+                  <th className="py-2.5 px-3 w-40 text-center bg-slate-950/80 border-r border-slate-800">Status</th>
 
                   {/* Pre-Commissioning subheaders */}
-                  <th className="py-2.5 px-3 w-44 text-center bg-slate-950/80">Status</th>
-                  <th className="py-2.5 px-3 w-36 border-r border-slate-800 bg-slate-950/80">Remarks</th>
+                  <th className="py-2.5 px-3 w-40 text-center bg-slate-950/80 border-r border-slate-800">Status</th>
 
                   {/* Commissioning subheaders */}
-                  <th className="py-2.5 px-3 w-44 text-center bg-slate-950/80">Status</th>
-                  <th className="py-2.5 px-3 w-36 border-r border-slate-800 bg-slate-950/80">Remarks</th>
+                  <th className="py-2.5 px-3 w-40 text-center bg-slate-950/80 border-r border-slate-800">Status</th>
+
+                  {/* Staff Verification Note subheader */}
+                  <th className="py-2.5 px-3 w-64 border-r border-slate-800 bg-slate-950/80 text-amber-300">Note (Before Approval)</th>
 
                   {/* Approve By subheaders - exact matching the 3 approval persons */}
                   <th className="py-2.5 px-2 w-32 text-center font-bold text-slate-200">
@@ -741,7 +775,7 @@ export const ScheduleView: React.FC = () => {
               <tbody className="divide-y divide-slate-800/60 font-sans">
                 {paginatedCables.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="py-16 text-center text-slate-500">
+                    <td colSpan={12} className="py-16 text-center text-slate-500">
                       No cables matched your filters.
                     </td>
                   </tr>
@@ -791,7 +825,7 @@ export const ScheduleView: React.FC = () => {
                       </td>
 
                       {/* Cable Laying Status Pill */}
-                      <td className="py-2 px-3 text-center whitespace-nowrap bg-slate-950/30">
+                      <td className="py-2 px-3 text-center whitespace-nowrap bg-slate-950/30 border-r border-slate-800">
                         <StatusPill
                           type="laying"
                           status={cable.cableLayingStatus}
@@ -804,39 +838,8 @@ export const ScheduleView: React.FC = () => {
                         />
                       </td>
 
-                      {/* Cable Laying Remarks (Direct Inline Editable if Logged In) */}
-                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/30" onClick={(e) => e.stopPropagation()}>
-                        {canEdit ? (
-                          <input
-                            type="text"
-                            defaultValue={cable.cableLayingRemarks || ''}
-                            key={`${cable.id}-laying-${cable.cableLayingRemarks || ''}`}
-                            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                            onBlur={(e) => {
-                              if (e.target.value !== (cable.cableLayingRemarks || '')) {
-                                updateCable(cable.id, { cableLayingRemarks: e.target.value });
-                              }
-                            }}
-                            placeholder="—"
-                            className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                            title="Click to edit Cable Laying remarks (Press Enter to save)"
-                          />
-                        ) : (
-                          <div 
-                            onClick={() => {
-                              showToast('Staff Login Required: Log in to edit remarks.', 'warning');
-                              setIsLoginModalOpen(true);
-                            }}
-                            className="w-full px-1.5 py-1 text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer truncate"
-                            title="Click to log in and edit remarks"
-                          >
-                            {cable.cableLayingRemarks || '—'}
-                          </div>
-                        )}
-                      </td>
-
                       {/* Pre-Commissioning Status Pill */}
-                      <td className="py-2 px-3 text-center whitespace-nowrap bg-slate-950/20">
+                      <td className="py-2 px-3 text-center whitespace-nowrap bg-slate-950/20 border-r border-slate-800">
                         <StatusPill
                           type="pre"
                           status={cable.preCommissioningStatus}
@@ -849,39 +852,8 @@ export const ScheduleView: React.FC = () => {
                         />
                       </td>
 
-                      {/* Pre-Commissioning Remarks */}
-                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/20" onClick={(e) => e.stopPropagation()}>
-                        {canEdit ? (
-                          <input
-                            type="text"
-                            defaultValue={cable.preCommissioningRemarks || ''}
-                            key={`${cable.id}-pre-${cable.preCommissioningRemarks || ''}`}
-                            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                            onBlur={(e) => {
-                              if (e.target.value !== (cable.preCommissioningRemarks || '')) {
-                                updateCable(cable.id, { preCommissioningRemarks: e.target.value });
-                              }
-                            }}
-                            placeholder="—"
-                            className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                            title="Click to edit Pre-Commissioning remarks (Press Enter to save)"
-                          />
-                        ) : (
-                          <div 
-                            onClick={() => {
-                              showToast('Staff Login Required: Log in to edit remarks.', 'warning');
-                              setIsLoginModalOpen(true);
-                            }}
-                            className="w-full px-1.5 py-1 text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer truncate"
-                            title="Click to log in and edit remarks"
-                          >
-                            {cable.preCommissioningRemarks || '—'}
-                          </div>
-                        )}
-                      </td>
-
                       {/* Commissioning Status Pill */}
-                      <td className="py-2 px-3 text-center whitespace-nowrap bg-slate-950/30">
+                      <td className="py-2 px-3 text-center whitespace-nowrap bg-slate-950/30 border-r border-slate-800">
                         <StatusPill
                           type="comm"
                           status={cable.commissioningStatus}
@@ -894,33 +866,33 @@ export const ScheduleView: React.FC = () => {
                         />
                       </td>
 
-                      {/* Commissioning Remarks */}
-                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/30" onClick={(e) => e.stopPropagation()}>
+                      {/* Staff Verification Note (Inline Editable & Persisted to Supabase) */}
+                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/20" onClick={(e) => e.stopPropagation()}>
                         {canEdit ? (
                           <input
                             type="text"
-                            defaultValue={cable.commissioningRemarks || ''}
-                            key={`${cable.id}-comm-${cable.commissioningRemarks || ''}`}
+                            defaultValue={cable.notes || ''}
+                            key={`${cable.id}-notes-${cable.notes || ''}`}
                             onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                             onBlur={(e) => {
-                              if (e.target.value !== (cable.commissioningRemarks || '')) {
-                                updateCable(cable.id, { commissioningRemarks: e.target.value });
+                              if (e.target.value !== (cable.notes || '')) {
+                                updateCable(cable.id, { notes: e.target.value });
                               }
                             }}
-                            placeholder="—"
-                            className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                            title="Click to edit Commissioning remarks (Press Enter to save)"
+                            placeholder="Add note before approval..."
+                            className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-amber-400/60 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
+                            title="Staff verification note (Press Enter to save). Shown before approval."
                           />
                         ) : (
                           <div 
                             onClick={() => {
-                              showToast('Staff Login Required: Log in to edit remarks.', 'warning');
+                              showToast('Staff Login Required: Log in to edit verification note.', 'warning');
                               setIsLoginModalOpen(true);
                             }}
                             className="w-full px-1.5 py-1 text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer truncate"
-                            title="Click to log in and edit remarks"
+                            title="Click to log in and add note"
                           >
-                            {cable.commissioningRemarks || '—'}
+                            {cable.notes || <span className="italic text-slate-600">No note</span>}
                           </div>
                         )}
                       </td>
@@ -940,7 +912,11 @@ export const ScheduleView: React.FC = () => {
                                   setIsLoginModalOpen(true);
                                   return;
                                 }
-                                updateApprovers(cable.id, 1, isApproved ? '' : 'Nayem Siddik (Sr. Engr)');
+                                if (isApproved) {
+                                  openRevokeModal(cable, 1, 'Nayem Siddik (Sr. Engr)');
+                                } else {
+                                  openApprovalModal(cable, 1, 'Nayem Siddik (Sr. Engr)');
+                                }
                               }}
                               className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
@@ -956,7 +932,7 @@ export const ScheduleView: React.FC = () => {
                                     : 'Restricted to Nayem Siddik (Senior Engineer) only'
                                   : isApproved
                                   ? `Signed: ${cable.approvedBy1}. Click to revoke.`
-                                  : 'Click to sign Level 1 as Nayem Siddik (Sr. Engr)'
+                                  : 'Click to enter note & sign Level 1 as Nayem Siddik'
                               }
                             >
                               {isApproved ? (
@@ -992,7 +968,11 @@ export const ScheduleView: React.FC = () => {
                                   setIsLoginModalOpen(true);
                                   return;
                                 }
-                                updateApprovers(cable.id, 2, isApproved ? '' : 'Mossadek Hossain (Sr. Engr)');
+                                if (isApproved) {
+                                  openRevokeModal(cable, 2, 'Mossadek Hossain (Sr. Engr)');
+                                } else {
+                                  openApprovalModal(cable, 2, 'Mossadek Hossain (Sr. Engr)');
+                                }
                               }}
                               className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
@@ -1008,7 +988,7 @@ export const ScheduleView: React.FC = () => {
                                     : 'Restricted to Mossadek Hossain (Senior Engineer) only'
                                   : isApproved
                                   ? `Signed: ${cable.approvedBy2}. Click to revoke.`
-                                  : 'Click to sign Level 2 as Mossadek Hossain (Sr. Engr)'
+                                  : 'Click to enter note & sign Level 2 as Mossadek Hossain'
                               }
                             >
                               {isApproved ? (
@@ -1044,7 +1024,11 @@ export const ScheduleView: React.FC = () => {
                                   setIsLoginModalOpen(true);
                                   return;
                                 }
-                                updateApprovers(cable.id, 3, isApproved ? '' : 'Md Fahad (Manager PP)');
+                                if (isApproved) {
+                                  openRevokeModal(cable, 3, 'Md Fahad (Manager PP)');
+                                } else {
+                                  openApprovalModal(cable, 3, 'Md Fahad (Manager PP)');
+                                }
                               }}
                               className={`w-full py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
@@ -1060,7 +1044,7 @@ export const ScheduleView: React.FC = () => {
                                     : 'Restricted to Md Fahad (Manager PP) only'
                                   : isApproved
                                   ? `Approved: ${cable.approvedBy3}. Click to revoke.`
-                                  : 'Click to grant final approval as Md Fahad (Manager PP)'
+                                  : 'Click to enter note & grant final approval as Md Fahad'
                               }
                             >
                               {isApproved ? (
@@ -1178,6 +1162,34 @@ export const ScheduleView: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Staff Note (Before Approval) in Card View */}
+                <div className="mt-2.5 p-2 bg-slate-950/70 border border-slate-850 rounded-xl space-y-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between text-[10px] text-amber-300 font-semibold">
+                    <span className="flex items-center gap-1">
+                      <MessageSquare className="w-2.5 h-2.5" /> Note (Before Approval)
+                    </span>
+                  </div>
+                  {canEdit ? (
+                    <input
+                      type="text"
+                      defaultValue={cable.notes || ''}
+                      key={`${cable.id}-card-note-${cable.notes || ''}`}
+                      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                      onBlur={(e) => {
+                        if (e.target.value !== (cable.notes || '')) {
+                          updateCable(cable.id, { notes: e.target.value });
+                        }
+                      }}
+                      placeholder="Add note before sign-off..."
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-400 rounded-lg px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none"
+                    />
+                  ) : (
+                    <div className="text-[11px] text-slate-400 truncate italic">
+                      {cable.notes || 'No note recorded'}
+                    </div>
+                  )}
+                </div>
+
                 {/* 3-Level Approve By Bar in Card View */}
                 <div className="mt-2.5 pt-2 border-t border-slate-850 space-y-1.5" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wider">
@@ -1198,7 +1210,11 @@ export const ScheduleView: React.FC = () => {
                               setIsLoginModalOpen(true);
                               return;
                             }
-                            updateApprovers(cable.id, 1, isApproved ? '' : 'Nayem Siddik (Sr. Engr)');
+                            if (isApproved) {
+                              openRevokeModal(cable, 1, 'Nayem Siddik (Sr. Engr)');
+                            } else {
+                              openApprovalModal(cable, 1, 'Nayem Siddik (Sr. Engr)');
+                            }
                           }}
                           className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold text-center transition-all flex items-center justify-center gap-1 truncate ${
                             isApproved
@@ -1228,7 +1244,11 @@ export const ScheduleView: React.FC = () => {
                               setIsLoginModalOpen(true);
                               return;
                             }
-                            updateApprovers(cable.id, 2, isApproved ? '' : 'Mossadek Hossain (Sr. Engr)');
+                            if (isApproved) {
+                              openRevokeModal(cable, 2, 'Mossadek Hossain (Sr. Engr)');
+                            } else {
+                              openApprovalModal(cable, 2, 'Mossadek Hossain (Sr. Engr)');
+                            }
                           }}
                           className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold text-center transition-all flex items-center justify-center gap-1 truncate ${
                             isApproved
@@ -1258,7 +1278,11 @@ export const ScheduleView: React.FC = () => {
                               setIsLoginModalOpen(true);
                               return;
                             }
-                            updateApprovers(cable.id, 3, isApproved ? '' : 'Md Fahad (Manager PP)');
+                            if (isApproved) {
+                              openRevokeModal(cable, 3, 'Md Fahad (Manager PP)');
+                            } else {
+                              openApprovalModal(cable, 3, 'Md Fahad (Manager PP)');
+                            }
                           }}
                           className={`py-1 px-1.5 rounded-lg text-[10px] font-bold text-center transition-all flex items-center justify-center gap-1 truncate ${
                             isApproved
@@ -1329,6 +1353,96 @@ export const ScheduleView: React.FC = () => {
             <span>Next</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
+        </div>
+      )}
+
+      {/* Approval Confirmation & Staff Note Modal */}
+      {approvalDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-xl ${approvalDialog.action === 'sign' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                  {approvalDialog.action === 'sign' ? <ShieldCheck className="w-5 h-5" /> : <X className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    {approvalDialog.action === 'sign' ? `Confirm Level ${approvalDialog.level} Sign-off` : `Revoke Level ${approvalDialog.level} Sign-off`}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    {approvalDialog.cable.cableTag} • {approvalDialog.signerName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setApprovalDialog(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {approvalDialog.action === 'sign' ? (
+              <div className="space-y-3">
+                <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-xl text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Cable Laying:</span>
+                    <span className="font-semibold text-slate-200">{approvalDialog.cable.cableLayingStatus}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Pre-Commissioning:</span>
+                    <span className="font-semibold text-slate-200">{approvalDialog.cable.preCommissioningStatus}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Commissioning:</span>
+                    <span className="font-semibold text-slate-200">{approvalDialog.cable.commissioningStatus}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Staff Verification Note (Before Approval)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={approvalNoteInput}
+                    onChange={(e) => setApprovalNoteInput(e.target.value)}
+                    placeholder="Enter site verification findings, test results, or punchlist notes before confirming approval..."
+                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/80 focus:ring-1 focus:ring-amber-400/40"
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    This note will be permanently recorded in Supabase and visible on the schedule dashboard.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-300 bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
+                Are you sure you want to revoke the Level {approvalDialog.level} signature from <strong className="text-white">{approvalDialog.cable.cableTag}</strong>?
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setApprovalDialog(null)}
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmApproval}
+                className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all shadow-md ${
+                  approvalDialog.action === 'sign'
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
+                    : 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/20'
+                }`}
+              >
+                {approvalDialog.action === 'sign' ? 'Confirm & Sign Approval' : 'Confirm Revoke'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

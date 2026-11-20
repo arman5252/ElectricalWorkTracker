@@ -33,17 +33,14 @@ export const CableDetailModal: React.FC = () => {
   const [cableLayingStatus, setCableLayingStatus] = useState<CableLayingStatus>(
     (normalizeStatus(selectedCable.cableLayingStatus) as CableLayingStatus) || 'Pending'
   );
-  const [cableLayingRemarks, setCableLayingRemarks] = useState<string>(selectedCable.cableLayingRemarks || '');
   
   const [preCommissioningStatus, setPreCommissioningStatus] = useState<CommissioningStatus>(
     (normalizeStatus(selectedCable.preCommissioningStatus) as CommissioningStatus) || 'Pending'
   );
-  const [preCommissioningRemarks, setPreCommissioningRemarks] = useState<string>(selectedCable.preCommissioningRemarks || '');
 
   const [commissioningStatus, setCommissioningStatus] = useState<CommissioningStatus>(
     (normalizeStatus(selectedCable.commissioningStatus) as CommissioningStatus) || 'Pending'
   );
-  const [commissioningRemarks, setCommissioningRemarks] = useState<string>(selectedCable.commissioningRemarks || '');
 
   const [approvedBy1, setApprovedBy1] = useState<boolean>(Boolean(selectedCable.approvedBy1));
   const [approvedBy2, setApprovedBy2] = useState<boolean>(Boolean(selectedCable.approvedBy2));
@@ -71,11 +68,8 @@ export const CableDetailModal: React.FC = () => {
 
     updateCable(selectedCable.id, {
       cableLayingStatus,
-      cableLayingRemarks,
       preCommissioningStatus,
-      preCommissioningRemarks,
       commissioningStatus,
-      commissioningRemarks,
       approvedBy1: newApprovedBy1,
       approvedBy2: newApprovedBy2,
       approvedBy3: newApprovedBy3,
@@ -223,17 +217,6 @@ export const CableDetailModal: React.FC = () => {
                   <option value="N/A">N/A</option>
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] text-slate-400 block mb-1">Remarks</label>
-                <input
-                  type="text"
-                  disabled={!canEdit}
-                  placeholder="Laying remarks..."
-                  value={cableLayingRemarks}
-                  onChange={(e) => setCableLayingRemarks(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
-                />
-              </div>
             </div>
 
             {/* 2. Pre-Commissioning */}
@@ -259,17 +242,6 @@ export const CableDetailModal: React.FC = () => {
                   <option value="Out of Scope">Out of Scope</option>
                   <option value="N/A">N/A</option>
                 </select>
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-400 block mb-1">Remarks</label>
-                <input
-                  type="text"
-                  disabled={!canEdit}
-                  placeholder="Pre-comm remarks..."
-                  value={preCommissioningRemarks}
-                  onChange={(e) => setPreCommissioningRemarks(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
-                />
               </div>
             </div>
 
@@ -297,18 +269,23 @@ export const CableDetailModal: React.FC = () => {
                   <option value="N/A">N/A</option>
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] text-slate-400 block mb-1">Remarks</label>
-                <input
-                  type="text"
-                  disabled={!canEdit}
-                  placeholder="Commissioning remarks..."
-                  value={commissioningRemarks}
-                  onChange={(e) => setCommissioningRemarks(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
-                />
-              </div>
             </div>
+          </div>
+
+          {/* Staff Verification Note (Before Approval) */}
+          <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-bold text-amber-300 uppercase tracking-wide">
+              <span>Staff Verification Note (Before Approval)</span>
+              {!canEdit && <Lock className="w-3.5 h-3.5 text-slate-500" />}
+            </div>
+            <textarea
+              rows={2}
+              disabled={!canEdit}
+              placeholder="Enter site verification, megger test, or engineering note before signing approvals..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-slate-200 text-xs focus:outline-none focus:border-amber-400 placeholder:text-slate-600 resize-none"
+            />
           </div>
 
           {/* Approve By Tier */}
@@ -400,35 +377,20 @@ export const CableDetailModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Drive Upload & Notes */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">
-                Attach Drawing / Proof Photo (Google Drive Folder)
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                  className="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400 cursor-pointer"
-                />
-                {isUploading && <span className="text-amber-400 text-xs">Uploading...</span>}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">
-                Field Technician Notes / Megger Test
-              </label>
+          {/* Drive Upload */}
+          <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl">
+            <label className="block text-slate-300 font-semibold mb-1">
+              Attach Drawing / Proof Photo (Google Drive Folder)
+            </label>
+            <div className="flex items-center gap-2">
               <input
-                type="text"
-                placeholder="e.g. Meggered 500MΩ phase to earth..."
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                className="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 text-xs focus:outline-none focus:border-amber-400"
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                className="text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400 cursor-pointer"
               />
+              {isUploading && <span className="text-amber-400 text-xs">Uploading...</span>}
             </div>
           </div>
 
