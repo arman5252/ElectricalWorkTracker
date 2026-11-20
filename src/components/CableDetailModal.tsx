@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { CableEntry, CableLayingStatus, CommissioningStatus } from '../types';
+import { normalizeStatus } from './ScheduleView';
 
 export const CableDetailModal: React.FC = () => {
   const { 
@@ -29,13 +30,19 @@ export const CableDetailModal: React.FC = () => {
 
   if (!selectedCable) return null;
 
-  const [cableLayingStatus, setCableLayingStatus] = useState<CableLayingStatus>(selectedCable.cableLayingStatus);
+  const [cableLayingStatus, setCableLayingStatus] = useState<CableLayingStatus>(
+    (normalizeStatus(selectedCable.cableLayingStatus) as CableLayingStatus) || 'Pending'
+  );
   const [cableLayingRemarks, setCableLayingRemarks] = useState<string>(selectedCable.cableLayingRemarks || '');
   
-  const [preCommissioningStatus, setPreCommissioningStatus] = useState<CommissioningStatus>(selectedCable.preCommissioningStatus);
+  const [preCommissioningStatus, setPreCommissioningStatus] = useState<CommissioningStatus>(
+    (normalizeStatus(selectedCable.preCommissioningStatus) as CommissioningStatus) || 'Pending'
+  );
   const [preCommissioningRemarks, setPreCommissioningRemarks] = useState<string>(selectedCable.preCommissioningRemarks || '');
 
-  const [commissioningStatus, setCommissioningStatus] = useState<CommissioningStatus>(selectedCable.commissioningStatus);
+  const [commissioningStatus, setCommissioningStatus] = useState<CommissioningStatus>(
+    (normalizeStatus(selectedCable.commissioningStatus) as CommissioningStatus) || 'Pending'
+  );
   const [commissioningRemarks, setCommissioningRemarks] = useState<string>(selectedCable.commissioningRemarks || '');
 
   const [approvedBy1, setApprovedBy1] = useState<boolean>(Boolean(selectedCable.approvedBy1));
@@ -48,6 +55,20 @@ export const CableDetailModal: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Respect RBAC: Only update approver fields that the logged-in user has permission to change
+    const newApprovedBy1 = canApproveLevel(1)
+      ? (approvedBy1 ? (selectedCable.approvedBy1 || 'Nayem Siddik (Sr. Engr)') : undefined)
+      : selectedCable.approvedBy1;
+
+    const newApprovedBy2 = canApproveLevel(2)
+      ? (approvedBy2 ? (selectedCable.approvedBy2 || 'Mossadek Hossain (Sr. Engr)') : undefined)
+      : selectedCable.approvedBy2;
+
+    const newApprovedBy3 = canApproveLevel(3)
+      ? (approvedBy3 ? (selectedCable.approvedBy3 || 'Md Fahad (Manager PP)') : undefined)
+      : selectedCable.approvedBy3;
+
     updateCable(selectedCable.id, {
       cableLayingStatus,
       cableLayingRemarks,
@@ -55,9 +76,9 @@ export const CableDetailModal: React.FC = () => {
       preCommissioningRemarks,
       commissioningStatus,
       commissioningRemarks,
-      approvedBy1: approvedBy1 ? 'Nayem Siddik (Sr. Engr)' : undefined,
-      approvedBy2: approvedBy2 ? 'Mossadek Hossain (Sr. Engr)' : undefined,
-      approvedBy3: approvedBy3 ? 'Md Fahad (Manager PP)' : undefined,
+      approvedBy1: newApprovedBy1,
+      approvedBy2: newApprovedBy2,
+      approvedBy3: newApprovedBy3,
       notes,
       drawingUrl
     });

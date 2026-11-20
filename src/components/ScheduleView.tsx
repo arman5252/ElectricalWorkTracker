@@ -24,8 +24,23 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
+export const normalizeStatus = (status?: string): string => {
+  const s = String(status || '').trim();
+  const lower = s.toLowerCase();
+  if (lower === 'complete by vel' || lower === 'vel' || lower === 'complete vel') return 'Complete By VEL';
+  if (lower === 'complete by bargen' || lower === 'bargen' || lower === 'complete bargen') return 'Complete By Bargen';
+  if (lower === 'progress' || lower === 'in progress') return 'Progress';
+  if (lower === 'pending') return 'Pending';
+  if (lower === 'scope of bargen') return 'Scope of Bargen';
+  if (lower === 'scope of vel') return 'Scope of VEL';
+  if (lower === 'out of scope') return 'Out of Scope';
+  if (lower === 'n/a' || lower === 'na') return 'N/A';
+  return s || 'Pending';
+};
+
 export const getPillStyle = (status: string) => {
-  switch (status) {
+  const norm = normalizeStatus(status);
+  switch (norm) {
     case 'Complete By VEL':
       return 'bg-[#10b981] hover:bg-[#059669] text-white shadow-sm font-bold';
     case 'Complete By Bargen':
@@ -53,25 +68,33 @@ export const StatusPill: React.FC<{
   disabled?: boolean;
   onBlocked?: () => void;
 }> = ({ status, onChange, disabled, onBlocked }) => {
+  const norm = normalizeStatus(status);
+
   if (disabled) {
     return (
       <div
-        onClick={onBlocked}
+        onClick={(e) => {
+          e.stopPropagation();
+          onBlocked?.();
+        }}
         title="Public Viewer Mode: Click to log in as Senior Engineer or Admin to change status"
-        className={`inline-flex items-center justify-center gap-1.5 cursor-pointer py-1 px-3 rounded-full text-[11px] border border-white/10 opacity-90 transition-all hover:opacity-100 hover:ring-1 hover:ring-amber-400/50 min-w-[145px] text-center select-none ${getPillStyle(status)}`}
+        className={`inline-flex items-center justify-center gap-1.5 cursor-pointer py-1 px-3 rounded-full text-[11px] border border-white/10 opacity-90 transition-all hover:opacity-100 hover:ring-1 hover:ring-amber-400/50 min-w-[145px] text-center select-none ${getPillStyle(norm)}`}
       >
-        <span>{status || 'Pending'}</span>
+        <span>{norm}</span>
         <Lock className="w-2.5 h-2.5 opacity-60" />
       </div>
     );
   }
 
   return (
-    <div className="relative inline-block whitespace-nowrap shrink-0">
+    <div 
+      className="relative inline-block whitespace-nowrap shrink-0"
+      onClick={(e) => e.stopPropagation()}
+    >
       <select
-        value={status}
+        value={norm}
         onChange={(e) => onChange(e.target.value)}
-        className={`appearance-none cursor-pointer py-1 pl-3 pr-6 rounded-full text-[11px] tracking-tight border border-white/10 focus:outline-none transition-all whitespace-nowrap min-w-[145px] text-center ${getPillStyle(status)}`}
+        className={`appearance-none cursor-pointer py-1 pl-3 pr-6 rounded-full text-[11px] tracking-tight border border-white/10 focus:outline-none transition-all whitespace-nowrap min-w-[145px] text-center ${getPillStyle(norm)}`}
       >
         <option value="Complete By VEL" className="bg-slate-900 text-emerald-400 py-1 font-bold">✓ Complete By VEL</option>
         <option value="Complete By Bargen" className="bg-slate-900 text-emerald-300 py-1 font-bold">✓ Complete By Bargen</option>
@@ -83,7 +106,7 @@ export const StatusPill: React.FC<{
         <option value="N/A" className="bg-slate-900 text-slate-400 py-1 font-semibold">N/A</option>
       </select>
       <ChevronDown className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${
-        status === 'Progress' ? 'text-[#14532d]' : 'text-white/80'
+        norm === 'Progress' ? 'text-[#14532d]' : 'text-white/80'
       }`} />
     </div>
   );
@@ -168,10 +191,10 @@ export const ScheduleView: React.FC = () => {
       if (cableSizeFilter !== 'All' && cable.cableSize !== cableSizeFilter) return false;
       if (cableTypeFilter !== 'All' && cable.cableType !== cableTypeFilter) return false;
 
-      // 3 Stages Filters
-      if (cableLayingFilter !== 'All' && cable.cableLayingStatus !== cableLayingFilter) return false;
-      if (preCommissioningFilter !== 'All' && cable.preCommissioningStatus !== preCommissioningFilter) return false;
-      if (commissioningFilter !== 'All' && cable.commissioningStatus !== commissioningFilter) return false;
+      // 3 Stages Filters with normalized comparison
+      if (cableLayingFilter !== 'All' && normalizeStatus(cable.cableLayingStatus) !== normalizeStatus(cableLayingFilter)) return false;
+      if (preCommissioningFilter !== 'All' && normalizeStatus(cable.preCommissioningStatus) !== normalizeStatus(preCommissioningFilter)) return false;
+      if (commissioningFilter !== 'All' && normalizeStatus(cable.commissioningStatus) !== normalizeStatus(commissioningFilter)) return false;
       if (approverFilter !== 'All') {
         if ((approverFilter === 'Fahad Sir' || approverFilter === 'Md Fahad (Manager PP)') && !cable.approvedBy3) return false;
         if ((approverFilter === 'Mosaddik Bhai' || approverFilter === 'Mossadek Hossain (Sr. Engr)') && !cable.approvedBy2) return false;
@@ -782,12 +805,13 @@ export const ScheduleView: React.FC = () => {
                       </td>
 
                       {/* Cable Laying Remarks (Direct Inline Editable if Logged In) */}
-                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/30">
+                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/30" onClick={(e) => e.stopPropagation()}>
                         {canEdit ? (
                           <input
                             type="text"
                             defaultValue={cable.cableLayingRemarks || ''}
                             key={`${cable.id}-laying-${cable.cableLayingRemarks || ''}`}
+                            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                             onBlur={(e) => {
                               if (e.target.value !== (cable.cableLayingRemarks || '')) {
                                 updateCable(cable.id, { cableLayingRemarks: e.target.value });
@@ -795,7 +819,7 @@ export const ScheduleView: React.FC = () => {
                             }}
                             placeholder="—"
                             className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                            title="Click to edit Cable Laying remarks"
+                            title="Click to edit Cable Laying remarks (Press Enter to save)"
                           />
                         ) : (
                           <div 
@@ -826,12 +850,13 @@ export const ScheduleView: React.FC = () => {
                       </td>
 
                       {/* Pre-Commissioning Remarks */}
-                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/20">
+                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/20" onClick={(e) => e.stopPropagation()}>
                         {canEdit ? (
                           <input
                             type="text"
                             defaultValue={cable.preCommissioningRemarks || ''}
                             key={`${cable.id}-pre-${cable.preCommissioningRemarks || ''}`}
+                            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                             onBlur={(e) => {
                               if (e.target.value !== (cable.preCommissioningRemarks || '')) {
                                 updateCable(cable.id, { preCommissioningRemarks: e.target.value });
@@ -839,7 +864,7 @@ export const ScheduleView: React.FC = () => {
                             }}
                             placeholder="—"
                             className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                            title="Click to edit Pre-Commissioning remarks"
+                            title="Click to edit Pre-Commissioning remarks (Press Enter to save)"
                           />
                         ) : (
                           <div 
@@ -870,12 +895,13 @@ export const ScheduleView: React.FC = () => {
                       </td>
 
                       {/* Commissioning Remarks */}
-                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/30">
+                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/30" onClick={(e) => e.stopPropagation()}>
                         {canEdit ? (
                           <input
                             type="text"
                             defaultValue={cable.commissioningRemarks || ''}
                             key={`${cable.id}-comm-${cable.commissioningRemarks || ''}`}
+                            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                             onBlur={(e) => {
                               if (e.target.value !== (cable.commissioningRemarks || '')) {
                                 updateCable(cable.id, { commissioningRemarks: e.target.value });
@@ -883,7 +909,7 @@ export const ScheduleView: React.FC = () => {
                             }}
                             placeholder="—"
                             className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-emerald-500/50 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                            title="Click to edit Commissioning remarks"
+                            title="Click to edit Commissioning remarks (Press Enter to save)"
                           />
                         ) : (
                           <div 
@@ -907,7 +933,8 @@ export const ScheduleView: React.FC = () => {
                           return (
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 if (!canSign) {
                                   showToast('Access Restricted: Level 1 can only be signed off by Nayem Siddik (Senior Engineer) or Admin.', 'warning');
                                   setIsLoginModalOpen(true);
@@ -917,21 +944,34 @@ export const ScheduleView: React.FC = () => {
                               }}
                               className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
-                                  ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm font-bold'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm font-bold hover:bg-emerald-500/30'
                                   : canSign
-                                  ? 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/80'
+                                  ? 'border border-dashed border-emerald-500/60 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 font-bold active:scale-95'
                                   : 'text-slate-600 hover:text-slate-400 opacity-60 cursor-not-allowed'
                               }`}
                               title={
                                 !canSign
-                                  ? 'Restricted to Nayem Siddik (Senior Engineer) only'
+                                  ? isApproved
+                                    ? `Signed by ${cable.approvedBy1} (Restricted to Nayem Siddik or Admin)`
+                                    : 'Restricted to Nayem Siddik (Senior Engineer) only'
                                   : isApproved
-                                  ? 'Click to revoke Nayem Siddik approval'
-                                  : 'Click to sign as Nayem Siddik (Sr. Engr)'
+                                  ? `Signed: ${cable.approvedBy1}. Click to revoke.`
+                                  : 'Click to sign Level 1 as Nayem Siddik (Sr. Engr)'
                               }
                             >
-                              <span className="truncate">{isApproved ? 'Nayem Siddik' : '—'}</span>
-                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />}
+                              {isApproved ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  <span className="truncate">Nayem Siddik</span>
+                                </>
+                              ) : canSign ? (
+                                <span className="truncate">+ Sign (Nayem)</span>
+                              ) : (
+                                <>
+                                  <span className="truncate">—</span>
+                                  <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />
+                                </>
+                              )}
                             </button>
                           );
                         })()}
@@ -945,7 +985,8 @@ export const ScheduleView: React.FC = () => {
                           return (
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 if (!canSign) {
                                   showToast('Access Restricted: Level 2 can only be signed off by Mossadek Hossain (Senior Engineer) or Admin.', 'warning');
                                   setIsLoginModalOpen(true);
@@ -955,21 +996,34 @@ export const ScheduleView: React.FC = () => {
                               }}
                               className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
-                                  ? 'bg-slate-800 text-slate-100 border border-slate-700 shadow-sm font-bold'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm font-bold hover:bg-emerald-500/30'
                                   : canSign
-                                  ? 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/80'
+                                  ? 'border border-dashed border-emerald-500/60 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 font-bold active:scale-95'
                                   : 'text-slate-600 hover:text-slate-400 opacity-60 cursor-not-allowed'
                               }`}
                               title={
                                 !canSign
-                                  ? 'Restricted to Mossadek Hossain (Senior Engineer) only'
+                                  ? isApproved
+                                    ? `Signed by ${cable.approvedBy2} (Restricted to Mossadek Hossain or Admin)`
+                                    : 'Restricted to Mossadek Hossain (Senior Engineer) only'
                                   : isApproved
-                                  ? 'Click to revoke Mossadek Hossain approval'
-                                  : 'Click to sign as Mossadek Hossain (Sr. Engr)'
+                                  ? `Signed: ${cable.approvedBy2}. Click to revoke.`
+                                  : 'Click to sign Level 2 as Mossadek Hossain (Sr. Engr)'
                               }
                             >
-                              <span className="truncate">{isApproved ? 'Mossadek' : '—'}</span>
-                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />}
+                              {isApproved ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  <span className="truncate">Mossadek</span>
+                                </>
+                              ) : canSign ? (
+                                <span className="truncate">+ Sign (Mossadek)</span>
+                              ) : (
+                                <>
+                                  <span className="truncate">—</span>
+                                  <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />
+                                </>
+                              )}
                             </button>
                           );
                         })()}
@@ -983,7 +1037,8 @@ export const ScheduleView: React.FC = () => {
                           return (
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 if (!canSign) {
                                   showToast('Access Restricted: Level 3 final approval can only be signed by Md Fahad (Manager PP) or Admin.', 'warning');
                                   setIsLoginModalOpen(true);
@@ -993,21 +1048,34 @@ export const ScheduleView: React.FC = () => {
                               }}
                               className={`w-full py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
-                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm font-bold hover:bg-amber-500/30'
                                   : canSign
-                                  ? 'text-slate-500 hover:text-amber-300 hover:bg-slate-800/80'
+                                  ? 'border border-dashed border-amber-500/60 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 font-bold active:scale-95'
                                   : 'text-slate-600 hover:text-slate-400 opacity-60 cursor-not-allowed'
                               }`}
                               title={
                                 !canSign
-                                  ? 'Restricted to Md Fahad (Manager PP) only'
+                                  ? isApproved
+                                    ? `Final approval by ${cable.approvedBy3} (Restricted to Md Fahad or Admin)`
+                                    : 'Restricted to Md Fahad (Manager PP) only'
                                   : isApproved
-                                  ? 'Click to revoke Md Fahad final approval'
-                                  : 'Click to sign as Md Fahad (Manager PP)'
+                                  ? `Approved: ${cable.approvedBy3}. Click to revoke.`
+                                  : 'Click to grant final approval as Md Fahad (Manager PP)'
                               }
                             >
-                              <span className="truncate">{isApproved ? 'Md Fahad' : '—'}</span>
-                              {!canSign && <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />}
+                              {isApproved ? (
+                                <>
+                                  <ShieldCheck className="w-3 h-3 text-amber-400 shrink-0" />
+                                  <span className="truncate">Md Fahad</span>
+                                </>
+                              ) : canSign ? (
+                                <span className="truncate">+ Approve (Fahad)</span>
+                              ) : (
+                                <>
+                                  <span className="truncate">—</span>
+                                  <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />
+                                </>
+                              )}
                             </button>
                           );
                         })()}
@@ -1110,17 +1178,104 @@ export const ScheduleView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Approve By Strip */}
-                {(cable.approvedBy1 || cable.approvedBy2 || cable.approvedBy3) && (
-                  <div className="mt-2.5 pt-2 border-t border-slate-850 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Approved by:</span>
-                    <div className="flex items-center gap-1.5 font-semibold text-slate-200">
-                      {cable.approvedBy1 && <span>{cable.approvedBy1}</span>}
-                      {cable.approvedBy2 && <span>• {cable.approvedBy2}</span>}
-                      {cable.approvedBy3 && <span className="text-amber-400 font-bold">• {cable.approvedBy3}</span>}
-                    </div>
+                {/* 3-Level Approve By Bar in Card View */}
+                <div className="mt-2.5 pt-2 border-t border-slate-850 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    <span>Engineering Sign-offs:</span>
+                    <span className="text-slate-500 font-normal">3 Levels</span>
                   </div>
-                )}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {/* Level 1: Nayem */}
+                    {(() => {
+                      const canSign = canApproveLevel(1);
+                      const isApproved = Boolean(cable.approvedBy1);
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!canSign) {
+                              showToast('Access Restricted: Level 1 sign-off is reserved to Nayem Siddik or Admin.', 'warning');
+                              setIsLoginModalOpen(true);
+                              return;
+                            }
+                            updateApprovers(cable.id, 1, isApproved ? '' : 'Nayem Siddik (Sr. Engr)');
+                          }}
+                          className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold text-center transition-all flex items-center justify-center gap-1 truncate ${
+                            isApproved
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold'
+                              : canSign
+                              ? 'border border-dashed border-emerald-500/60 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 font-bold'
+                              : 'bg-slate-950/80 text-slate-600 border border-slate-800'
+                          }`}
+                          title={isApproved ? `Signed: ${cable.approvedBy1}` : canSign ? 'Click to sign L1 (Nayem Siddik)' : 'L1: Nayem Siddik'}
+                        >
+                          {isApproved ? <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 shrink-0" /> : !canSign && <Lock className="w-2 h-2 text-slate-600 shrink-0" />}
+                          <span className="truncate">{isApproved ? 'Nayem' : canSign ? '+ L1' : 'L1: —'}</span>
+                        </button>
+                      );
+                    })()}
+
+                    {/* Level 2: Mossadek */}
+                    {(() => {
+                      const canSign = canApproveLevel(2);
+                      const isApproved = Boolean(cable.approvedBy2);
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!canSign) {
+                              showToast('Access Restricted: Level 2 sign-off is reserved to Mossadek Hossain or Admin.', 'warning');
+                              setIsLoginModalOpen(true);
+                              return;
+                            }
+                            updateApprovers(cable.id, 2, isApproved ? '' : 'Mossadek Hossain (Sr. Engr)');
+                          }}
+                          className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold text-center transition-all flex items-center justify-center gap-1 truncate ${
+                            isApproved
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold'
+                              : canSign
+                              ? 'border border-dashed border-emerald-500/60 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 font-bold'
+                              : 'bg-slate-950/80 text-slate-600 border border-slate-800'
+                          }`}
+                          title={isApproved ? `Signed: ${cable.approvedBy2}` : canSign ? 'Click to sign L2 (Mossadek Hossain)' : 'L2: Mossadek Hossain'}
+                        >
+                          {isApproved ? <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 shrink-0" /> : !canSign && <Lock className="w-2 h-2 text-slate-600 shrink-0" />}
+                          <span className="truncate">{isApproved ? 'Mossadek' : canSign ? '+ L2' : 'L2: —'}</span>
+                        </button>
+                      );
+                    })()}
+
+                    {/* Level 3: Fahad */}
+                    {(() => {
+                      const canSign = canApproveLevel(3);
+                      const isApproved = Boolean(cable.approvedBy3);
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!canSign) {
+                              showToast('Access Restricted: Level 3 final approval is reserved to Md Fahad or Admin.', 'warning');
+                              setIsLoginModalOpen(true);
+                              return;
+                            }
+                            updateApprovers(cable.id, 3, isApproved ? '' : 'Md Fahad (Manager PP)');
+                          }}
+                          className={`py-1 px-1.5 rounded-lg text-[10px] font-bold text-center transition-all flex items-center justify-center gap-1 truncate ${
+                            isApproved
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                              : canSign
+                              ? 'border border-dashed border-amber-500/60 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
+                              : 'bg-slate-950/80 text-slate-600 border border-slate-800'
+                          }`}
+                          title={isApproved ? `Approved: ${cable.approvedBy3}` : canSign ? 'Click to grant final approval (Md Fahad)' : 'L3: Md Fahad'}
+                        >
+                          {isApproved ? <ShieldCheck className="w-2.5 h-2.5 text-amber-400 shrink-0" /> : !canSign && <Lock className="w-2 h-2 text-slate-600 shrink-0" />}
+                          <span className="truncate">{isApproved ? 'Fahad' : canSign ? '+ Final' : 'L3: —'}</span>
+                        </button>
+                      );
+                    })()}
+                  </div>
+                </div>
               </div>
 
               <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">

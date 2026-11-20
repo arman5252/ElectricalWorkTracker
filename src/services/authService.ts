@@ -17,6 +17,17 @@ export const ACCOUNTS: Record<string, { password: string; user: AppUser }> = {
       approvalName: 'All Approvals'
     }
   },
+  admin: {
+    password: 'arman2026**',
+    user: {
+      username: 'arman',
+      name: 'Arman (Admin)',
+      title: 'System Administrator',
+      role: 'admin',
+      approvalKey: 'all',
+      approvalName: 'All Approvals'
+    }
+  },
   nayem: {
     password: 'Nayem2026',
     user: {
@@ -28,7 +39,51 @@ export const ACCOUNTS: Record<string, { password: string; user: AppUser }> = {
       approvalName: 'Nayem Siddik (Sr. Engr)'
     }
   },
+  naim: {
+    password: 'Nayem2026',
+    user: {
+      username: 'Nayem',
+      name: 'Nayem Siddik',
+      title: 'Senior Engineer',
+      role: 'engineer',
+      approvalKey: 'approvedBy1',
+      approvalName: 'Nayem Siddik (Sr. Engr)'
+    }
+  },
+  naimz: {
+    password: 'Nayem2026',
+    user: {
+      username: 'Nayem',
+      name: 'Nayem Siddik',
+      title: 'Senior Engineer',
+      role: 'engineer',
+      approvalKey: 'approvedBy1',
+      approvalName: 'Nayem Siddik (Sr. Engr)'
+    }
+  },
   mossadek: {
+    password: 'Mossadek2026',
+    user: {
+      username: 'Mossadek',
+      name: 'Mossadek Hossain',
+      title: 'Senior Engineer',
+      role: 'engineer',
+      approvalKey: 'approvedBy2',
+      approvalName: 'Mossadek Hossain (Sr. Engr)'
+    }
+  },
+  mosaddik: {
+    password: 'Mossadek2026',
+    user: {
+      username: 'Mossadek',
+      name: 'Mossadek Hossain',
+      title: 'Senior Engineer',
+      role: 'engineer',
+      approvalKey: 'approvedBy2',
+      approvalName: 'Mossadek Hossain (Sr. Engr)'
+    }
+  },
+  mosadek: {
     password: 'Mossadek2026',
     user: {
       username: 'Mossadek',
@@ -58,7 +113,8 @@ export function authenticate(username: string, password: string): AppUser | null
   const cleanUser = String(username || '').trim().toLowerCase();
   const account = ACCOUNTS[cleanUser];
   if (!account) return null;
-  if (account.password === password.trim()) {
+  const pInput = String(password || '').trim();
+  if (account.password === pInput || account.password.toLowerCase() === pInput.toLowerCase()) {
     return account.user;
   }
   return null;
@@ -71,9 +127,16 @@ export function canEditSchedule(user: AppUser | null): boolean {
 
 export function canSignApproval(user: AppUser | null, level: 1 | 2 | 3): boolean {
   if (!user) return false;
-  if (user.role === 'admin') return true;
-  if (level === 1) return user.approvalKey === 'approvedBy1';
-  if (level === 2) return user.approvalKey === 'approvedBy2';
-  if (level === 3) return user.approvalKey === 'approvedBy3';
+  const u = (user.username || '').toLowerCase();
+  if (user.role === 'admin' || u === 'arman' || u === 'admin') return true;
+  if (level === 1) {
+    return user.approvalKey === 'approvedBy1' || u === 'nayem' || u === 'naim' || u === 'naimz';
+  }
+  if (level === 2) {
+    return user.approvalKey === 'approvedBy2' || u === 'mossadek' || u === 'mosaddik' || u === 'mosadek';
+  }
+  if (level === 3) {
+    return user.approvalKey === 'approvedBy3' || u === 'fahad';
+  }
   return false;
 }

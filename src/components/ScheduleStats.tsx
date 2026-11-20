@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { normalizeStatus } from './ScheduleView';
 import { 
   CheckCircle2, 
   Activity, 
@@ -29,21 +30,39 @@ export const ScheduleStats: React.FC = () => {
   const total = cables.length;
 
   // 1. Cable Laying metrics
-  const velComplete = cables.filter(c => c.cableLayingStatus === 'Complete By VEL' || c.cableLayingStatus === 'Complete By Bargen').length;
-  const velProgress = cables.filter(c => c.cableLayingStatus === 'Progress').length;
-  const velPending = cables.filter(c => c.cableLayingStatus === 'Pending' || !c.cableLayingStatus).length;
+  const velComplete = cables.filter(c => {
+    const s = normalizeStatus(c.cableLayingStatus);
+    return s === 'Complete By VEL' || s === 'Complete By Bargen';
+  }).length;
+  const velProgress = cables.filter(c => normalizeStatus(c.cableLayingStatus) === 'Progress').length;
+  const velPending = cables.filter(c => {
+    const s = normalizeStatus(c.cableLayingStatus);
+    return s === 'Pending' || !s;
+  }).length;
   const velPercent = total > 0 ? Math.round((velComplete / total) * 100) : 0;
 
   // 2. Pre-Commissioning metrics
-  const preBargenComplete = cables.filter(c => c.preCommissioningStatus === 'Complete By Bargen' || c.preCommissioningStatus === 'Complete By VEL').length;
-  const preProgress = cables.filter(c => c.preCommissioningStatus === 'Progress').length;
-  const prePending = cables.filter(c => c.preCommissioningStatus === 'Pending' || !c.preCommissioningStatus).length;
+  const preBargenComplete = cables.filter(c => {
+    const s = normalizeStatus(c.preCommissioningStatus);
+    return s === 'Complete By Bargen' || s === 'Complete By VEL';
+  }).length;
+  const preProgress = cables.filter(c => normalizeStatus(c.preCommissioningStatus) === 'Progress').length;
+  const prePending = cables.filter(c => {
+    const s = normalizeStatus(c.preCommissioningStatus);
+    return s === 'Pending' || !s;
+  }).length;
   const prePercent = total > 0 ? Math.round((preBargenComplete / total) * 100) : 0;
 
   // 3. Commissioning metrics
-  const commBargenComplete = cables.filter(c => c.commissioningStatus === 'Complete By Bargen' || c.commissioningStatus === 'Complete By VEL').length;
-  const commProgress = cables.filter(c => c.commissioningStatus === 'Progress').length;
-  const commPending = cables.filter(c => c.commissioningStatus === 'Pending' || !c.commissioningStatus).length;
+  const commBargenComplete = cables.filter(c => {
+    const s = normalizeStatus(c.commissioningStatus);
+    return s === 'Complete By Bargen' || s === 'Complete By VEL';
+  }).length;
+  const commProgress = cables.filter(c => normalizeStatus(c.commissioningStatus) === 'Progress').length;
+  const commPending = cables.filter(c => {
+    const s = normalizeStatus(c.commissioningStatus);
+    return s === 'Pending' || !s;
+  }).length;
   const commPercent = total > 0 ? Math.round((commBargenComplete / total) * 100) : 0;
 
   // 4. Approvals
@@ -177,12 +196,7 @@ export const ScheduleStats: React.FC = () => {
 
         {/* Phase 4: Approve By (Sign-offs) */}
         <div 
-          onClick={() => { setApproverFilter(approverFilter === 'Fahad Sir' || approverFilter === 'Md Fahad (Manager PP)' ? 'All' : 'Md Fahad (Manager PP)'); setActiveView('schedule'); }}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-lg ${
-            approverFilter === 'Fahad Sir' || approverFilter === 'Md Fahad (Manager PP)'
-              ? 'bg-slate-900 border-amber-500 ring-1 ring-amber-500/40'
-              : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
-          }`}
+          className="p-4 rounded-2xl border transition-all bg-slate-900/80 border-slate-800 hover:border-slate-700 shadow-lg"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
@@ -195,15 +209,39 @@ export const ScheduleStats: React.FC = () => {
           </div>
 
           <div className="space-y-1.5 mt-2">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Level 1: <strong className="text-white">Nayem Siddik (Sr. Engr)</strong></span>
-              <span className="font-mono font-bold text-slate-200">{approvedNaim} Signed</span>
+            <div 
+              onClick={() => {
+                setApproverFilter(approverFilter === 'Nayem Siddik (Sr. Engr)' ? 'All' : 'Nayem Siddik (Sr. Engr)');
+                setActiveView('schedule');
+              }}
+              className={`flex items-center justify-between text-[11px] p-1 rounded-lg cursor-pointer transition-colors ${
+                approverFilter === 'Nayem Siddik (Sr. Engr)' ? 'bg-emerald-500/20 text-emerald-300 font-bold' : 'hover:bg-slate-800 text-slate-400'
+              }`}
+            >
+              <span>Level 1: <strong className="text-white">Nayem Siddik</strong></span>
+              <span className="font-mono font-bold text-emerald-400">{approvedNaim} Signed</span>
             </div>
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Level 2: <strong className="text-white">Mossadek Hossain (Sr. Engr)</strong></span>
-              <span className="font-mono font-bold text-slate-200">{approvedMosaddik} Signed</span>
+            <div 
+              onClick={() => {
+                setApproverFilter(approverFilter === 'Mossadek Hossain (Sr. Engr)' ? 'All' : 'Mossadek Hossain (Sr. Engr)');
+                setActiveView('schedule');
+              }}
+              className={`flex items-center justify-between text-[11px] p-1 rounded-lg cursor-pointer transition-colors ${
+                approverFilter === 'Mossadek Hossain (Sr. Engr)' ? 'bg-emerald-500/20 text-emerald-300 font-bold' : 'hover:bg-slate-800 text-slate-400'
+              }`}
+            >
+              <span>Level 2: <strong className="text-white">Mossadek Hossain</strong></span>
+              <span className="font-mono font-bold text-emerald-400">{approvedMosaddik} Signed</span>
             </div>
-            <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800">
+            <div 
+              onClick={() => {
+                setApproverFilter(approverFilter === 'Md Fahad (Manager PP)' ? 'All' : 'Md Fahad (Manager PP)');
+                setActiveView('schedule');
+              }}
+              className={`flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-800 p-1 rounded-lg cursor-pointer transition-colors ${
+                approverFilter === 'Md Fahad (Manager PP)' ? 'bg-amber-500/20 text-amber-300 font-bold' : 'hover:bg-slate-800 text-slate-400'
+              }`}
+            >
               <span className="text-amber-300 font-semibold">Final: <strong>Md Fahad (Manager PP)</strong></span>
               <span className="font-mono font-bold text-amber-400">{approvedFahad} Approved</span>
             </div>

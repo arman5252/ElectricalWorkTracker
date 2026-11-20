@@ -55,6 +55,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const quickLogin = (key: string) => {
+    const acc = ACCOUNTS[key];
+    if (acc) {
+      login(acc.user);
+      showToast(`Logged in as ${acc.user.name} (${acc.user.title})`, 'success');
+      setUsername('');
+      setPassword('');
+      setError(null);
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div 
@@ -180,43 +192,46 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               <ArrowRight className="w-4 h-4" />
             </button>
 
-            {/* Quick Demo Switcher */}
+            {/* Quick 1-Click Login Selection */}
             <div className="pt-3 border-t border-slate-800/80">
-              <div className="text-[11px] font-semibold text-slate-400 mb-2">
-                Quick 1-Click Login Selection:
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-slate-400">
+                  Quick 1-Click Login:
+                </span>
+                <span className="text-[10px] text-amber-400 font-medium">Click name to sign in instantly</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                 <button
                   type="button"
-                  onClick={() => fillCredentials('arman')}
-                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-left transition-colors"
+                  onClick={() => quickLogin('arman')}
+                  className="p-2 bg-slate-950 hover:bg-slate-850 hover:border-amber-500/50 border border-slate-800 rounded-lg text-left transition-all group"
                 >
-                  <div className="font-bold text-amber-300">Admin (arman)</div>
+                  <div className="font-bold text-amber-300 group-hover:text-amber-200">Admin (arman)</div>
                   <div className="text-[10px] text-slate-400">Full System Control</div>
                 </button>
                 <button
                   type="button"
-                  onClick={() => fillCredentials('nayem')}
-                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-left transition-colors"
+                  onClick={() => quickLogin('nayem')}
+                  className="p-2 bg-slate-950 hover:bg-slate-850 hover:border-emerald-500/50 border border-slate-800 rounded-lg text-left transition-all group"
                 >
-                  <div className="font-bold text-white">Nayem Siddik</div>
-                  <div className="text-[10px] text-emerald-400">Senior Engineer</div>
+                  <div className="font-bold text-white group-hover:text-emerald-300">Nayem Siddik</div>
+                  <div className="text-[10px] text-emerald-400">Sr. Engr (Level 1 Sign-off)</div>
                 </button>
                 <button
                   type="button"
-                  onClick={() => fillCredentials('mossadek')}
-                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-left transition-colors"
+                  onClick={() => quickLogin('mossadek')}
+                  className="p-2 bg-slate-950 hover:bg-slate-850 hover:border-emerald-500/50 border border-slate-800 rounded-lg text-left transition-all group"
                 >
-                  <div className="font-bold text-white">Mossadek Hossain</div>
-                  <div className="text-[10px] text-emerald-400">Senior Engineer</div>
+                  <div className="font-bold text-white group-hover:text-emerald-300">Mossadek Hossain</div>
+                  <div className="text-[10px] text-emerald-400">Sr. Engr (Level 2 Sign-off)</div>
                 </button>
                 <button
                   type="button"
-                  onClick={() => fillCredentials('fahad')}
-                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-left transition-colors"
+                  onClick={() => quickLogin('fahad')}
+                  className="p-2 bg-slate-950 hover:bg-slate-850 hover:border-amber-500/50 border border-slate-800 rounded-lg text-left transition-all group"
                 >
-                  <div className="font-bold text-white">Md Fahad</div>
-                  <div className="text-[10px] text-amber-400">Manager PP</div>
+                  <div className="font-bold text-white group-hover:text-amber-300">Md Fahad</div>
+                  <div className="text-[10px] text-amber-400">Manager PP (Level 3 Sign-off)</div>
                 </button>
               </div>
             </div>
