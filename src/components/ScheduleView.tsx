@@ -710,65 +710,92 @@ export const ScheduleView: React.FC = () => {
       {/* Table View matching user spreadsheet layout */}
       {viewMode === 'table' ? (
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1450px] text-left text-xs text-slate-300 border-collapse table-fixed">
+          <div className="overflow-x-auto max-h-[calc(100vh-230px)] overflow-y-auto">
+            <table className="w-full min-w-[1480px] text-left text-xs text-slate-300 border-collapse table-fixed">
+              <colgroup>
+                {/* 1. Sr # */}
+                <col style={{ width: '50px' }} />
+                {/* 2. Cable Designation */}
+                <col style={{ width: '150px' }} />
+                {/* 3. From (Origin) */}
+                <col style={{ width: '160px' }} />
+                {/* 4. To (Destination) */}
+                <col style={{ width: '160px' }} />
+                {/* 5. Cable Laying Status */}
+                <col style={{ width: '145px' }} />
+                {/* 6. Pre-Commissioning Status */}
+                <col style={{ width: '145px' }} />
+                {/* 7. Commissioning Status */}
+                <col style={{ width: '145px' }} />
+                {/* 8. Staff Verification Note */}
+                <col style={{ width: '215px' }} />
+                {/* 9. Nayem Siddik */}
+                <col style={{ width: '130px' }} />
+                {/* 10. Mossadek Hossain */}
+                <col style={{ width: '130px' }} />
+                {/* 11. Md Fahad */}
+                <col style={{ width: '130px' }} />
+                {/* 12. View Action */}
+                <col style={{ width: '50px' }} />
+              </colgroup>
+
               {/* Top Tier Headers (Matching the navy blue group headers in screenshot) */}
               <thead>
-                <tr className="bg-[#0f2444] text-white border-b border-slate-800 text-[11px] font-bold">
-                  <th colSpan={4} className="py-2.5 px-3.5 border-r border-slate-800/80">
+                <tr className="bg-[#0f2444] text-white border-b border-slate-800 text-[11px] font-bold sticky top-0 z-20">
+                  <th colSpan={4} className="py-2.5 px-3 border-r border-slate-800/80 bg-[#0f2444]">
                     CABLE SPECIFICATION & ROUTING
                   </th>
-                  <th colSpan={1} className="py-2.5 px-3.5 text-center bg-[#13325c] border-r border-slate-800/80">
+                  <th colSpan={1} className="py-2.5 px-3 text-center bg-[#13325c] border-r border-slate-800/80">
                     Cable Laying
                   </th>
-                  <th colSpan={1} className="py-2.5 px-3.5 text-center bg-[#173d70] border-r border-slate-800/80">
+                  <th colSpan={1} className="py-2.5 px-3 text-center bg-[#173d70] border-r border-slate-800/80">
                     Pre-Commissioning
                   </th>
-                  <th colSpan={1} className="py-2.5 px-3.5 text-center bg-[#13325c] border-r border-slate-800/80">
+                  <th colSpan={1} className="py-2.5 px-3 text-center bg-[#13325c] border-r border-slate-800/80">
                     Commissioning
                   </th>
-                  <th colSpan={1} className="py-2.5 px-3.5 text-center bg-[#173d70] border-r border-slate-800/80 text-amber-300">
+                  <th colSpan={1} className="py-2.5 px-3 text-center bg-[#173d70] border-r border-slate-800/80 text-amber-300">
                     Staff Verification Note
                   </th>
-                  <th colSpan={3} className="py-2.5 px-3.5 text-center bg-[#0f2444]">
+                  <th colSpan={3} className="py-2.5 px-3 text-center bg-[#0f2444] border-r border-slate-800/80">
                     Approve By
                   </th>
-                  <th className="py-2.5 px-2 text-center w-12"></th>
+                  <th className="py-2.5 px-1 text-center bg-[#0f2444]"></th>
                 </tr>
 
                 {/* Subheaders */}
-                <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800 font-bold sticky top-0 z-10 shadow-sm">
-                  <th className="py-2.5 px-3 w-12 text-slate-500 text-center">Sr #</th>
-                  <th className="py-2.5 px-3 w-44">Cable Designation</th>
-                  <th className="py-2.5 px-3 w-44">From (Origin)</th>
-                  <th className="py-2.5 px-3 w-44 border-r border-slate-800">To (Destination)</th>
+                <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800 font-bold sticky top-[36px] z-20 shadow-md">
+                  <th className="py-2.5 px-2 text-slate-500 text-center border-r border-slate-800/60 bg-slate-950">Sr #</th>
+                  <th className="py-2.5 px-3 bg-slate-950 border-r border-slate-800/60">Cable Designation</th>
+                  <th className="py-2.5 px-3 bg-slate-950 border-r border-slate-800/60">From (Origin)</th>
+                  <th className="py-2.5 px-3 bg-slate-950 border-r border-slate-800">To (Destination)</th>
                   
                   {/* Cable Laying subheaders */}
-                  <th className="py-2.5 px-3 w-40 text-center bg-slate-950/80 border-r border-slate-800">Status</th>
+                  <th className="py-2.5 px-2 text-center bg-slate-950 border-r border-slate-800">Status</th>
 
                   {/* Pre-Commissioning subheaders */}
-                  <th className="py-2.5 px-3 w-40 text-center bg-slate-950/80 border-r border-slate-800">Status</th>
+                  <th className="py-2.5 px-2 text-center bg-slate-950 border-r border-slate-800">Status</th>
 
                   {/* Commissioning subheaders */}
-                  <th className="py-2.5 px-3 w-40 text-center bg-slate-950/80 border-r border-slate-800">Status</th>
+                  <th className="py-2.5 px-2 text-center bg-slate-950 border-r border-slate-800">Status</th>
 
                   {/* Staff Verification Note subheader */}
-                  <th className="py-2.5 px-3 w-64 border-r border-slate-800 bg-slate-950/80 text-amber-300">Note (Before Approval)</th>
+                  <th className="py-2.5 px-3 border-r border-slate-800 bg-slate-950 text-amber-300">Note (Before Approval)</th>
 
                   {/* Approve By subheaders - exact matching the 3 approval persons */}
-                  <th className="py-2.5 px-2 w-32 text-center font-bold text-slate-200">
+                  <th className="py-2 px-2 text-center font-bold text-slate-200 border-r border-slate-800/60 bg-slate-950">
                     <div>Nayem Siddik</div>
-                    <div className="text-[10px] text-slate-400 font-normal">Sr. Engr</div>
+                    <div className="text-[9px] text-slate-400 font-normal">Sr. Engr</div>
                   </th>
-                  <th className="py-2.5 px-2 w-32 text-center font-bold text-slate-200">
+                  <th className="py-2 px-2 text-center font-bold text-slate-200 border-r border-slate-800/60 bg-slate-950">
                     <div>Mossadek Hossain</div>
-                    <div className="text-[10px] text-slate-400 font-normal">Sr. Engr</div>
+                    <div className="text-[9px] text-slate-400 font-normal">Sr. Engr</div>
                   </th>
-                  <th className="py-2.5 px-2 w-32 text-center font-bold text-amber-300">
+                  <th className="py-2 px-2 text-center font-bold text-amber-300 border-r border-slate-800 bg-slate-950">
                     <div>Md Fahad</div>
-                    <div className="text-[10px] text-amber-400/80 font-normal">Manager PP</div>
+                    <div className="text-[9px] text-amber-400/80 font-normal">Manager PP</div>
                   </th>
-                  <th className="py-2.5 px-2 w-12 text-center">View</th>
+                  <th className="py-2.5 px-1 text-center bg-slate-950 text-slate-500">View</th>
                 </tr>
               </thead>
 
@@ -786,46 +813,47 @@ export const ScheduleView: React.FC = () => {
                       className="hover:bg-slate-850/80 transition-colors group"
                     >
                       {/* Sr No */}
-                      <td className="py-2.5 px-3 font-mono text-slate-500 text-[11px] text-center">
+                      <td className="py-2 px-2 font-mono text-slate-500 text-[11px] text-center border-r border-slate-800/40">
                         {cable.srNo}
                       </td>
 
                       {/* Cable Tag */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-2 px-3 border-r border-slate-800/40">
                         <span 
                           onClick={() => setSelectedCable(cable)}
-                          className="font-mono font-bold text-amber-300 hover:text-amber-200 cursor-pointer bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-xs inline-block"
+                          className="font-mono font-bold text-amber-300 hover:text-amber-200 cursor-pointer bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-xs inline-block truncate max-w-full"
+                          title={cable.cableTag}
                         >
                           {cable.cableTag}
                         </span>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate" title={`${cable.cableSize} (${cable.cableType})`}>
                           {cable.cableSize} ({cable.cableType})
                         </div>
                       </td>
 
                       {/* From */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-2 px-3 border-r border-slate-800/40">
                         <div className="font-semibold text-white truncate text-xs" title={cable.fromEquipment}>
-                          {cable.fromEquipment}
+                          {cable.fromEquipment || '—'}
                         </div>
                         <div className="text-[10px] text-slate-400 truncate" title={cable.fromLocation}>
-                          {cable.fromLocation}
+                          {cable.fromLocation || '—'}
                         </div>
                       </td>
 
                       {/* To */}
-                      <td className="py-2.5 px-3 border-r border-slate-800">
+                      <td className="py-2 px-3 border-r border-slate-800">
                         <div className="font-semibold text-white truncate text-xs flex items-center gap-1" title={cable.toEquipment}>
                           <ArrowRight className="w-2.5 h-2.5 text-slate-500 shrink-0" />
-                          <span className="truncate">{cable.toEquipment}</span>
+                          <span className="truncate">{cable.toEquipment || '—'}</span>
                         </div>
                         <div className="text-[10px] text-slate-400 truncate pl-3.5" title={cable.toLocation}>
-                          {cable.toLocation}
+                          {cable.toLocation || '—'}
                         </div>
                       </td>
 
                       {/* Cable Laying Status Pill */}
-                      <td className="py-2 px-3 text-center whitespace-nowrap bg-slate-950/30 border-r border-slate-800">
+                      <td className="py-2 px-2 text-center whitespace-nowrap bg-slate-950/30 border-r border-slate-800">
                         <StatusPill
                           type="laying"
                           status={cable.cableLayingStatus}
@@ -839,7 +867,7 @@ export const ScheduleView: React.FC = () => {
                       </td>
 
                       {/* Pre-Commissioning Status Pill */}
-                      <td className="py-2 px-3 text-center whitespace-nowrap bg-slate-950/20 border-r border-slate-800">
+                      <td className="py-2 px-2 text-center whitespace-nowrap bg-slate-950/20 border-r border-slate-800">
                         <StatusPill
                           type="pre"
                           status={cable.preCommissioningStatus}
@@ -853,7 +881,7 @@ export const ScheduleView: React.FC = () => {
                       </td>
 
                       {/* Commissioning Status Pill */}
-                      <td className="py-2 px-3 text-center whitespace-nowrap bg-slate-950/30 border-r border-slate-800">
+                      <td className="py-2 px-2 text-center whitespace-nowrap bg-slate-950/30 border-r border-slate-800">
                         <StatusPill
                           type="comm"
                           status={cable.commissioningStatus}
@@ -880,7 +908,7 @@ export const ScheduleView: React.FC = () => {
                               }
                             }}
                             placeholder="Add note before approval..."
-                            className="w-full bg-transparent hover:bg-slate-800/80 focus:bg-slate-950 border border-transparent focus:border-amber-400/60 rounded px-1.5 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
+                            className="w-full bg-slate-900/70 hover:bg-slate-800/80 focus:bg-slate-950 border border-slate-800 focus:border-amber-400/80 rounded px-2 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
                             title="Staff verification note (Press Enter to save). Shown before approval."
                           />
                         ) : (
@@ -889,7 +917,7 @@ export const ScheduleView: React.FC = () => {
                               showToast('Staff Login Required: Log in to edit verification note.', 'warning');
                               setIsLoginModalOpen(true);
                             }}
-                            className="w-full px-1.5 py-1 text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer truncate"
+                            className="w-full px-2 py-1 text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer truncate"
                             title="Click to log in and add note"
                           >
                             {cable.notes || <span className="italic text-slate-600">No note</span>}
@@ -898,7 +926,7 @@ export const ScheduleView: React.FC = () => {
                       </td>
 
                       {/* Approve By: Nayem Siddik (Only Nayem Siddik or Admin can sign) */}
-                      <td className="py-2 px-2 text-center whitespace-nowrap">
+                      <td className="py-2 px-1.5 text-center whitespace-nowrap border-r border-slate-800/60">
                         {(() => {
                           const canSign = canApproveLevel(1);
                           const isApproved = Boolean(cable.approvedBy1);
@@ -918,7 +946,7 @@ export const ScheduleView: React.FC = () => {
                                   openApprovalModal(cable, 1, 'Nayem Siddik (Sr. Engr)');
                                 }
                               }}
-                              className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+                              className={`w-full py-1 px-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm font-bold hover:bg-emerald-500/30'
                                   : canSign
@@ -938,7 +966,7 @@ export const ScheduleView: React.FC = () => {
                               {isApproved ? (
                                 <>
                                   <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                                  <span className="truncate">Nayem Siddik</span>
+                                  <span className="truncate">Nayem</span>
                                 </>
                               ) : canSign ? (
                                 <span className="truncate">+ Sign (Nayem)</span>
@@ -954,7 +982,7 @@ export const ScheduleView: React.FC = () => {
                       </td>
 
                       {/* Approve By: Mossadek Hossain (Only Mossadek Hossain or Admin can sign) */}
-                      <td className="py-2 px-2 text-center whitespace-nowrap">
+                      <td className="py-2 px-1.5 text-center whitespace-nowrap border-r border-slate-800/60">
                         {(() => {
                           const canSign = canApproveLevel(2);
                           const isApproved = Boolean(cable.approvedBy2);
@@ -974,7 +1002,7 @@ export const ScheduleView: React.FC = () => {
                                   openApprovalModal(cable, 2, 'Mossadek Hossain (Sr. Engr)');
                                 }
                               }}
-                              className={`w-full py-1 px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+                              className={`w-full py-1 px-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm font-bold hover:bg-emerald-500/30'
                                   : canSign
@@ -1010,7 +1038,7 @@ export const ScheduleView: React.FC = () => {
                       </td>
 
                       {/* Approve By: Md Fahad (Only Md Fahad or Admin can sign) */}
-                      <td className="py-2 px-2 text-center whitespace-nowrap">
+                      <td className="py-2 px-1.5 text-center whitespace-nowrap border-r border-slate-800">
                         {(() => {
                           const canSign = canApproveLevel(3);
                           const isApproved = Boolean(cable.approvedBy3);
@@ -1030,7 +1058,7 @@ export const ScheduleView: React.FC = () => {
                                   openApprovalModal(cable, 3, 'Md Fahad (Manager PP)');
                                 }
                               }}
-                              className={`w-full py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                              className={`w-full py-1 px-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
                                 isApproved
                                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm font-bold hover:bg-amber-500/30'
                                   : canSign
