@@ -7,7 +7,8 @@ import {
   fetchAllCablesFromSupabase, 
   updateCableInSupabase, 
   bulkSeedCablesToSupabase,
-  mapDbRowToCableEntry 
+  mapDbRowToCableEntry,
+  sortCablesInOrder
 } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
 
@@ -104,13 +105,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].cableLayingStatus) {
-          return parsed;
+          return sortCablesInOrder(parsed);
         }
       }
     } catch (e) {
       console.warn('Failed to load local storage:', e);
     }
-    return initialCables;
+    return sortCablesInOrder(initialCables);
   });
 
   const [boq] = useState<BoqItem[]>(boqSummary);
@@ -212,9 +213,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDbStatus('connecting');
     const dbCables = await fetchAllCablesFromSupabase();
     if (dbCables && dbCables.length > 0) {
-      setCables(dbCables);
+      const sorted = sortCablesInOrder(dbCables);
+      setCables(sorted);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sorted));
+      } catch (e) {}
       setDbStatus('connected');
-      showToast(`Reloaded ${dbCables.length} cables from Supabase Database!`, 'success');
+      showToast(`Reloaded and synchronized ${sorted.length} cables from Supabase Database!`, 'success');
     } else {
       setDbStatus('standby');
       showToast('Could not fetch cables from Supabase. Working with cached project schedule.', 'info');
@@ -232,13 +237,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 1. Initial fetch from Supabase if table has records
     fetchAllCablesFromSupabase().then(dbCables => {
       if (dbCables && dbCables.length > 0) {
-        setCables(dbCables);
+        const sorted = sortCablesInOrder(dbCables);
+        setCables(sorted);
         setDbStatus('connected');
-        console.log(`[Supabase DB] Loaded ${dbCables.length} cables from Supabase`);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(sorted));
+        } catch (e) {}
+        console.log(`[Supabase DB] Loaded and synchronized ${sorted.length} cables from Supabase`);
       } else {
         setDbStatus('connected');
       }
-    }).catch(() => {
+    }).catch((err) => {
+      console.warn('[Supabase Initial Fetch Warning]:', err);
       setDbStatus('standby');
     });
 
@@ -251,10 +261,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const updated = mapDbRowToCableEntry(payload.new);
             setCables(prev => {
               const exists = prev.some(c => c.id === updated.id || c.cableTag === updated.cableTag);
-              if (exists) {
-                return prev.map(c => (c.id === updated.id || c.cableTag === updated.cableTag) ? { ...c, ...updated } : c);
-              }
-              return [...prev, updated];
+              const nextList = exists
+                ? prev.map(c => (c.id === updated.id || c.cableTag === updated.cableTag) ? { ...c, ...updated } : c)
+                : [...prev, updated];
+              const sorted = sortCablesInOrder(nextList);
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(sorted));
+              } catch (e) {}
+              return sorted;
             });
             if (selectedCable && (selectedCable.id === updated.id || selectedCable.cableTag === updated.cableTag)) {
               setSelectedCable(prev => prev ? { ...prev, ...updated } : updated);
@@ -333,138 +347,190 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Actions for 3 Stages & Approvals with direct Supabase Database Persistence
-  const updateCableLayingStatus = (id: string, status: CableLayingStatus, remarks?: string) => {
+  const updateCableLayingStatus = async (id: string, status: CableLayingStatus, remarks?: string) => {
     if (!canEdit) {
       showToast('Authentication required: Please log in as Senior Engineer or Admin to edit Cable Laying.', 'warning');
       setIsLoginModalOpen(true);
       return;
     }
-    let targetUpdated: CableEntry | null = null;
-    setCables(prev => prev.map(c => {
-      if (c.id === id) {
-        const updated = { 
-          ...c, 
-          cableLayingStatus: status, 
-          cableLayingRemarks: remarks !== undefined ? remarks : c.cableLayingRemarks,
-          updatedAt: new Date().toISOString() 
-        };
-        targetUpdated = updated;
-        if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
-        return updated;
-      }
-      return c;
-    }));
-    if (targetUpdated) {
-      updateCableInSupabase(targetUpdated);
+
+    const existing = cables.find(c => c.id === id);
+    if (!existing) return;
+
+    const updated: CableEntry = { 
+      ...existing, 
+      cableLayingStatus: status, 
+      cableLayingRemarks: remarks !== undefined ? remarks : existing.cableLayingRemarks,
+      updatedAt: new Date().toISOString() 
+    };
+
+    // 1. Immediately update React state
+    setCables(prev => prev.map(c => c.id === id ? updated : c));
+    if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+
+    // 2. Immediately persist to localStorage
+    try {
+      const nextList = cables.map(c => c.id === id ? updated : c);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextList));
+    } catch (e) {}
+
+    // 3. Immediately persist to Supabase Database
+    const res = await updateCableInSupabase(updated);
+    if (res.success) {
+      showToast(`Cable Laying status set to "${status}" (Saved to Supabase DB)`, 'success');
+    } else {
+      console.warn('[Supabase Sync Warning]:', res.error);
+      showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
-    showToast(`Cable Laying status set to "${status}" (Saved to Supabase DB)`, 'success');
   };
 
-  const updatePreCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
+  const updatePreCommissioningStatus = async (id: string, status: CommissioningStatus, remarks?: string) => {
     if (!canEdit) {
       showToast('Authentication required: Please log in as Senior Engineer or Admin to edit Pre-Commissioning.', 'warning');
       setIsLoginModalOpen(true);
       return;
     }
-    let targetUpdated: CableEntry | null = null;
-    setCables(prev => prev.map(c => {
-      if (c.id === id) {
-        const updated = { 
-          ...c, 
-          preCommissioningStatus: status, 
-          preCommissioningRemarks: remarks !== undefined ? remarks : c.preCommissioningRemarks,
-          updatedAt: new Date().toISOString() 
-        };
-        targetUpdated = updated;
-        if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
-        return updated;
-      }
-      return c;
-    }));
-    if (targetUpdated) {
-      updateCableInSupabase(targetUpdated);
+
+    const existing = cables.find(c => c.id === id);
+    if (!existing) return;
+
+    const updated: CableEntry = { 
+      ...existing, 
+      preCommissioningStatus: status, 
+      preCommissioningRemarks: remarks !== undefined ? remarks : existing.preCommissioningRemarks,
+      updatedAt: new Date().toISOString() 
+    };
+
+    // 1. Immediately update React state
+    setCables(prev => prev.map(c => c.id === id ? updated : c));
+    if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+
+    // 2. Immediately persist to localStorage
+    try {
+      const nextList = cables.map(c => c.id === id ? updated : c);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextList));
+    } catch (e) {}
+
+    // 3. Immediately persist to Supabase Database
+    const res = await updateCableInSupabase(updated);
+    if (res.success) {
+      showToast(`Pre-Commissioning status set to "${status}" (Saved to Supabase DB)`, 'success');
+    } else {
+      console.warn('[Supabase Sync Warning]:', res.error);
+      showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
-    showToast(`Pre-Commissioning status set to "${status}" (Saved to Supabase DB)`, 'success');
   };
 
-  const updateCommissioningStatus = (id: string, status: CommissioningStatus, remarks?: string) => {
+  const updateCommissioningStatus = async (id: string, status: CommissioningStatus, remarks?: string) => {
     if (!canEdit) {
       showToast('Authentication required: Please log in as Senior Engineer or Admin to edit Commissioning.', 'warning');
       setIsLoginModalOpen(true);
       return;
     }
-    let targetUpdated: CableEntry | null = null;
-    setCables(prev => prev.map(c => {
-      if (c.id === id) {
-        const updated = { 
-          ...c, 
-          commissioningStatus: status, 
-          commissioningRemarks: remarks !== undefined ? remarks : c.commissioningRemarks,
-          updatedAt: new Date().toISOString() 
-        };
-        targetUpdated = updated;
-        if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
-        return updated;
-      }
-      return c;
-    }));
-    if (targetUpdated) {
-      updateCableInSupabase(targetUpdated);
+
+    const existing = cables.find(c => c.id === id);
+    if (!existing) return;
+
+    const updated: CableEntry = { 
+      ...existing, 
+      commissioningStatus: status, 
+      commissioningRemarks: remarks !== undefined ? remarks : existing.commissioningRemarks,
+      updatedAt: new Date().toISOString() 
+    };
+
+    // 1. Immediately update React state
+    setCables(prev => prev.map(c => c.id === id ? updated : c));
+    if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+
+    // 2. Immediately persist to localStorage
+    try {
+      const nextList = cables.map(c => c.id === id ? updated : c);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextList));
+    } catch (e) {}
+
+    // 3. Immediately persist to Supabase Database
+    const res = await updateCableInSupabase(updated);
+    if (res.success) {
+      showToast(`Commissioning status set to "${status}" (Saved to Supabase DB)`, 'success');
+    } else {
+      console.warn('[Supabase Sync Warning]:', res.error);
+      showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
-    showToast(`Commissioning status set to "${status}" (Saved to Supabase DB)`, 'success');
   };
 
-  const updateApprovers = (id: string, level: 1 | 2 | 3, name: string) => {
+  const updateApprovers = async (id: string, level: 1 | 2 | 3, name: string) => {
     if (!canApproveLevel(level)) {
       const allowedNames = { 1: 'Nayem Siddik (Senior Engineer)', 2: 'Mossadek Hossain (Senior Engineer)', 3: 'Md Fahad (Manager PP)' };
       showToast(`Access Restricted: Level ${level} sign-off can only be approved by ${allowedNames[level]} or Admin.`, 'warning');
       setIsLoginModalOpen(true);
       return;
     }
-    let targetUpdated: CableEntry | null = null;
-    setCables(prev => prev.map(c => {
-      if (c.id === id) {
-        const updated = { 
-          ...c, 
-          approvedBy1: level === 1 ? name : c.approvedBy1,
-          approvedBy2: level === 2 ? name : c.approvedBy2,
-          approvedBy3: level === 3 ? name : c.approvedBy3,
-          updatedAt: new Date().toISOString() 
-        };
-        targetUpdated = updated;
-        if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
-        return updated;
-      }
-      return c;
-    }));
-    if (targetUpdated) {
-      updateCableInSupabase(targetUpdated);
+
+    const existing = cables.find(c => c.id === id);
+    if (!existing) return;
+
+    const updated: CableEntry = { 
+      ...existing, 
+      approvedBy1: level === 1 ? name : existing.approvedBy1,
+      approvedBy2: level === 2 ? name : existing.approvedBy2,
+      approvedBy3: level === 3 ? name : existing.approvedBy3,
+      updatedAt: new Date().toISOString() 
+    };
+
+    // 1. Immediately update React state
+    setCables(prev => prev.map(c => c.id === id ? updated : c));
+    if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+
+    // 2. Immediately persist to localStorage
+    try {
+      const nextList = cables.map(c => c.id === id ? updated : c);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextList));
+    } catch (e) {}
+
+    // 3. Immediately persist to Supabase Database
+    const res = await updateCableInSupabase(updated);
+    if (res.success) {
+      showToast(`Sign-off updated for Level ${level} (Saved to Supabase DB)`, 'success');
+    } else {
+      console.warn('[Supabase Sync Warning]:', res.error);
+      showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
-    showToast(`Sign-off updated for Level ${level} (Saved to Supabase DB)`, 'success');
   };
 
-  const updateCable = (id: string, updates: Partial<CableEntry>) => {
+  const updateCable = async (id: string, updates: Partial<CableEntry>) => {
     if (!canEdit) {
       showToast('Authentication required: Please log in to edit cable data.', 'warning');
       setIsLoginModalOpen(true);
       return;
     }
-    let targetUpdated: CableEntry | null = null;
-    setCables(prev => prev.map(c => {
-      if (c.id === id) {
-        const updated = { ...c, ...updates, updatedAt: new Date().toISOString() };
-        targetUpdated = updated;
-        if (selectedCable && selectedCable.id === id) {
-          setSelectedCable(updated);
-        }
-        return updated;
-      }
-      return c;
-    }));
-    if (targetUpdated) {
-      updateCableInSupabase(targetUpdated);
+
+    const existing = cables.find(c => c.id === id);
+    if (!existing) return;
+
+    const updated: CableEntry = { 
+      ...existing, 
+      ...updates, 
+      updatedAt: new Date().toISOString() 
+    };
+
+    // 1. Immediately update React state
+    setCables(prev => prev.map(c => c.id === id ? updated : c));
+    if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+
+    // 2. Immediately persist to localStorage
+    try {
+      const nextList = cables.map(c => c.id === id ? updated : c);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextList));
+    } catch (e) {}
+
+    // 3. Immediately persist to Supabase Database
+    const res = await updateCableInSupabase(updated);
+    if (res.success) {
+      showToast(`Cable ${existing.cableTag} updated (Saved to Supabase DB)`, 'success');
+    } else {
+      console.warn('[Supabase Sync Warning]:', res.error);
+      showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
-    showToast(`Cable updated & saved to Supabase DB`, 'info');
   };
 
   const addSingleCable = async (cable: CableEntry, saveToSupabase = true): Promise<boolean> => {

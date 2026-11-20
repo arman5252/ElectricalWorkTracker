@@ -177,6 +177,19 @@ export async function testSupabaseConnection(url?: string, anonKey?: string): Pr
   }
 }
 
+export function sortCablesInOrder(list: CableEntry[]): CableEntry[] {
+  return [...list].sort((a, b) => {
+    const aIsLV = a.id.startsWith('LV');
+    const bIsLV = b.id.startsWith('LV');
+    if (aIsLV && !bIsLV) return -1;
+    if (!aIsLV && bIsLV) return 1;
+    const aNum = parseInt(a.id.replace(/\D/g, ''), 10) || 0;
+    const bNum = parseInt(b.id.replace(/\D/g, ''), 10) || 0;
+    if (aNum !== bNum) return aNum - bNum;
+    return a.id.localeCompare(b.id);
+  });
+}
+
 export async function fetchAllCablesFromSupabase(): Promise<CableEntry[] | null> {
   const client = getSupabaseClient();
   if (!client) return null;
@@ -185,7 +198,6 @@ export async function fetchAllCablesFromSupabase(): Promise<CableEntry[] | null>
     const { data, error } = await client
       .from('cables')
       .select('*')
-      .order('sr_no', { ascending: true })
       .limit(2000);
 
     if (error) {
@@ -194,31 +206,44 @@ export async function fetchAllCablesFromSupabase(): Promise<CableEntry[] | null>
     }
 
     if (!data || data.length === 0) return [];
-    return data.map(mapDbRowToCableEntry);
+    const mapped = data.map(mapDbRowToCableEntry);
+    return sortCablesInOrder(mapped);
   } catch (e) {
     console.warn('[Supabase Fetch Exception]:', e);
     return null;
   }
 }
 
-export async function updateCableInSupabase(cable: CableEntry): Promise<boolean> {
+export async function updateCableInSupabase(cable: CableEntry): Promise<{ success: boolean; error?: string }> {
   const client = getSupabaseClient();
-  if (!client) return false;
+  if (!client) {
+    console.warn('[Supabase Update] Client not initialized');
+    return { success: false, error: 'Supabase client not connected' };
+  }
 
   try {
     const row = mapCableEntryToDbRow(cable);
-    const { error } = await client
+    // 1. Direct update by primary key ID
+    const { error: updateError } = await client
       .from('cables')
-      .upsert(row, { onConflict: 'id' });
+      .update(row)
+      .eq('id', cable.id);
 
-    if (error) {
-      console.error('[Supabase Upsert Error]:', error.message);
-      return false;
+    if (updateError) {
+      console.warn('[Supabase Update by ID warning, attempting upsert]:', updateError.message);
+      const { error: upsertError } = await client
+        .from('cables')
+        .upsert(row, { onConflict: 'id' });
+
+      if (upsertError) {
+        console.error('[Supabase Upsert Error]:', upsertError.message);
+        return { success: false, error: upsertError.message };
+      }
     }
-    return true;
-  } catch (e) {
+    return { success: true };
+  } catch (e: any) {
     console.error('[Supabase Upsert Exception]:', e);
-    return false;
+    return { success: false, error: e?.message || 'Network exception' };
   }
 }
 
