@@ -7,10 +7,12 @@ import {
   ProjectSettings, 
   AppUser,
   WorkAssignment,
-  STAFF_MEMBERS
+  STAFF_MEMBERS,
+  StaffEditRecord
 } from '../types';
 import { AUTH_STORAGE_KEY, canEditSchedule, canSignApproval, isStaffProfile } from '../services/authService';
 import { initialCables, boqSummary, projectMeta } from '../data/cableData';
+import { INITIAL_EDIT_HISTORY } from '../data/editHistoryData';
 import { 
   getSupabaseClient, 
   fetchAllCablesFromSupabase, 
@@ -20,13 +22,17 @@ import {
   sortCablesInOrder,
   fetchWorkAssignmentsFromSupabase,
   saveWorkAssignmentsToSupabase,
-  WORK_ASSIGNMENTS_RECORD_ID
+  WORK_ASSIGNMENTS_RECORD_ID,
+  fetchEditHistoryFromSupabase,
+  saveEditHistoryToSupabase,
+  EDIT_HISTORY_RECORD_ID
 } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = 'volttrack_cables_schedule_state_v4_uploaded';
 const SETTINGS_KEY = 'volttrack_settings_state_v3';
 const ASSIGNMENTS_STORAGE_KEY = 'volttrack_work_assignments_v1';
+const EDIT_HISTORY_STORAGE_KEY = 'volttrack_staff_edit_history_v1';
 
 export const INITIAL_WORK_ASSIGNMENTS: WorkAssignment[] = [
   {
@@ -118,6 +124,8 @@ interface AppContextType {
   currentUser: AppUser | null;
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
+  profileModalTab: 'profile' | 'history';
+  setProfileModalTab: (tab: 'profile' | 'history') => void;
   isImportModalOpen: boolean;
   setIsImportModalOpen: (open: boolean) => void;
   login: (user: AppUser) => void;
@@ -125,6 +133,11 @@ interface AppContextType {
   canEdit: boolean;
   isStaff: boolean;
   canApproveLevel: (level: 1 | 2 | 3) => boolean;
+
+  // Staff Edit History & Audit Logs
+  editHistory: StaffEditRecord[];
+  recordStaffEdit: (entry: Omit<StaffEditRecord, 'id' | 'timestamp' | 'staffUsername' | 'staffName' | 'staffRole'>) => void;
+  clearEditHistory: () => Promise<void>;
   
   // Database Connection Status
   dbStatus: 'connected' | 'connecting' | 'standby';
@@ -250,7 +263,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return null;
   });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [profileModalTab, setProfileModalTab] = useState<'profile' | 'history'>('profile');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // Staff Edit History & Audit Logs
+  const [editHistory, setEditHistory] = useState<StaffEditRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem(EDIT_HISTORY_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return INITIAL_EDIT_HISTORY;
+  });
+
+  const recordStaffEdit = (entry: Omit<StaffEditRecord, 'id' | 'timestamp' | 'staffUsername' | 'staffName' | 'staffRole'>) => {
+    const staff = currentUser || {
+      username: 'Staff',
+      name: 'Staff Member',
+      title: 'Engineer'
+    };
+
+    const newRecord: StaffEditRecord = {
+      id: `EDT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      staffUsername: staff.username,
+      staffName: staff.name,
+      staffRole: staff.title,
+      ...entry
+    };
+
+    setEditHistory(prev => {
+      const next = [newRecord, ...prev].slice(0, 200);
+      try {
+        localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {}
+      saveEditHistoryToSupabase(next).catch(err => console.warn('Supabase edit history sync error:', err));
+      return next;
+    });
+  };
+
+  const clearEditHistory = async () => {
+    setEditHistory([]);
+    try {
+      localStorage.removeItem(EDIT_HISTORY_STORAGE_KEY);
+    } catch (e) {}
+    await saveEditHistoryToSupabase([]);
+    showToast('Edit history cleared', 'info');
+  };
 
   const login = (user: AppUser) => {
     setCurrentUser(user);
@@ -380,6 +441,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }).catch(err => console.warn('[Supabase Work Assignments Load Warning]:', err));
 
+    // 1c. Fetch Staff Edit History from Supabase
+    fetchEditHistoryFromSupabase().then(dbHistory => {
+      if (dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0) {
+        setEditHistory(dbHistory);
+        try {
+          localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(dbHistory));
+        } catch (e) {}
+        console.log(`[Supabase DB] Loaded ${dbHistory.length} edit history records`);
+      }
+    }).catch(err => console.warn('[Supabase Edit History Load Warning]:', err));
+
     // 2. Real-Time WebSocket Channel for instant sync across all users
     try {
       const channel = client
@@ -393,6 +465,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (Array.isArray(parsed)) {
                   setWorkAssignments(parsed);
                   localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(parsed));
+                }
+              } catch (e) {}
+              return;
+            }
+
+            // Check if it's edit history record
+            if (payload.new && payload.new.id === EDIT_HISTORY_RECORD_ID && payload.new.description) {
+              try {
+                const parsed = JSON.parse(payload.new.description);
+                if (Array.isArray(parsed)) {
+                  setEditHistory(parsed);
+                  localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(parsed));
                 }
               } catch (e) {}
               return;
@@ -523,6 +607,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('[Supabase Sync Warning]:', res.error);
       showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
+
+    recordStaffEdit({
+      targetType: 'Cable',
+      targetIdentifier: existing.cableTag,
+      action: 'Updated Cable Laying Status',
+      fieldChanged: 'Cable Laying',
+      oldValue: existing.cableLayingStatus,
+      newValue: status,
+      notes: remarks || undefined
+    });
   };
 
   const updatePreCommissioningStatus = async (id: string, status: CommissioningStatus, remarks?: string) => {
@@ -560,6 +654,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('[Supabase Sync Warning]:', res.error);
       showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
+
+    recordStaffEdit({
+      targetType: 'Cable',
+      targetIdentifier: existing.cableTag,
+      action: 'Updated Pre-Commissioning Status',
+      fieldChanged: 'Pre-Commissioning',
+      oldValue: existing.preCommissioningStatus,
+      newValue: status,
+      notes: remarks || undefined
+    });
   };
 
   const updateCommissioningStatus = async (id: string, status: CommissioningStatus, remarks?: string) => {
@@ -597,6 +701,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('[Supabase Sync Warning]:', res.error);
       showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
+
+    recordStaffEdit({
+      targetType: 'Cable',
+      targetIdentifier: existing.cableTag,
+      action: 'Updated Commissioning Status',
+      fieldChanged: 'Commissioning',
+      oldValue: existing.commissioningStatus,
+      newValue: status,
+      notes: remarks || undefined
+    });
   };
 
   const updateApprovers = async (id: string, level: 1 | 2 | 3, name: string, note?: string) => {
@@ -639,6 +753,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('[Supabase Sync Warning]:', res.error);
       showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
+
+    recordStaffEdit({
+      targetType: 'Approval',
+      targetIdentifier: existing.cableTag,
+      action: `Approved Level ${level} Engineering Sign-Off`,
+      fieldChanged: `approvedBy${level}`,
+      oldValue: (level === 1 ? existing.approvedBy1 : level === 2 ? existing.approvedBy2 : existing.approvedBy3) || 'Pending Sign-Off',
+      newValue: name,
+      notes: note || undefined
+    });
   };
 
   const updateCable = async (id: string, updates: Partial<CableEntry>) => {
@@ -675,6 +799,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('[Supabase Sync Warning]:', res.error);
       showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
     }
+
+    const changedFields = Object.keys(updates).join(', ');
+    recordStaffEdit({
+      targetType: 'Cable',
+      targetIdentifier: existing.cableTag,
+      action: 'Modified Cable Specifications',
+      fieldChanged: changedFields,
+      notes: `Updated fields: ${changedFields}`
+    });
   };
 
   const addSingleCable = async (cable: CableEntry, saveToSupabase = true): Promise<boolean> => {
@@ -798,6 +931,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('Failed to sync assignments to Supabase:', err);
     });
 
+    recordStaffEdit({
+      targetType: 'Work Assignment',
+      targetIdentifier: data.cableTag || newAssignment.id,
+      action: 'Assigned Work to Staff',
+      fieldChanged: 'Work Assignment',
+      newValue: `${data.title} -> ${data.assignedToName}`,
+      notes: `Assigned to ${data.assignedToName} (${data.priority} priority, Task: ${data.taskType})`
+    });
+
     showToast(`Work "${data.title}" assigned to ${data.assignedToName} successfully!`, 'success');
     return newAssignment;
   };
@@ -828,6 +970,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
+    const existingAssignment = workAssignments.find(a => a.id === id);
+    recordStaffEdit({
+      targetType: 'Work Assignment',
+      targetIdentifier: existingAssignment?.cableTag || existingAssignment?.title || id,
+      action: updates.status ? `Work Status Changed to ${updates.status}` : 'Updated Work Assignment',
+      fieldChanged: Object.keys(updates).join(', '),
+      oldValue: existingAssignment?.status,
+      newValue: updates.status || updates.assignedToName,
+      notes: updates.completionRemarks ? `Remarks: ${updates.completionRemarks}` : undefined
+    });
+
     saveWorkAssignmentsToSupabase(nextAssignments).catch(e => console.warn(e));
     showToast('Work assignment updated successfully!', 'success');
     return true;
@@ -856,6 +1009,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }));
     }
 
+    recordStaffEdit({
+      targetType: 'Work Assignment',
+      targetIdentifier: assignment?.cableTag || assignment?.title || id,
+      action: 'Deleted Work Assignment',
+      fieldChanged: 'Work Assignment',
+      oldValue: assignment?.title,
+      newValue: 'Removed'
+    });
+
     saveWorkAssignmentsToSupabase(nextAssignments).catch(e => console.warn(e));
     showToast('Work assignment removed', 'info');
     return true;
@@ -882,6 +1044,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentUser,
       isLoginModalOpen,
       setIsLoginModalOpen,
+      profileModalTab,
+      setProfileModalTab,
       isImportModalOpen,
       setIsImportModalOpen,
       login,
@@ -889,6 +1053,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canEdit,
       isStaff,
       canApproveLevel,
+      editHistory,
+      recordStaffEdit,
+      clearEditHistory,
       dbStatus,
       reloadFromSupabase,
       searchQuery,

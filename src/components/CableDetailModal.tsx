@@ -13,7 +13,8 @@ import {
   LogIn,
   MessageSquare,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  History
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { CableEntry, CableLayingStatus, CommissioningStatus } from '../types';
@@ -31,6 +32,7 @@ export const CableDetailModal: React.FC = () => {
     isStaff,
     canEdit,
     canApproveLevel,
+    editHistory,
     setIsLoginModalOpen
   } = useApp();
 
@@ -531,10 +533,43 @@ export const CableDetailModal: React.FC = () => {
             </div>
           )}
 
+          {/* Cable Specific Edit History (if available) */}
+          {editHistory.filter(h => h.targetIdentifier === selectedCable.cableTag).length > 0 && (
+            <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 text-xs font-bold text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Recent Staff Edit Records for this Cable</span>
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  {editHistory.filter(h => h.targetIdentifier === selectedCable.cableTag).length} edits
+                </span>
+              </div>
+              <div className="max-h-28 overflow-y-auto space-y-1.5 pr-1 text-[11px] custom-scrollbar">
+                {editHistory
+                  .filter(h => h.targetIdentifier === selectedCable.cableTag)
+                  .map(rec => (
+                    <div key={rec.id} className="p-2 rounded-lg bg-slate-900 border border-slate-800/80 flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-semibold text-white flex items-center gap-1.5">
+                          <span className="text-amber-400 font-bold">{rec.staffName}</span>
+                          <span className="text-slate-400 text-[10px]">({rec.action})</span>
+                        </div>
+                        {rec.notes && <p className="text-slate-400 italic text-[10.5px] mt-0.5">&ldquo;{rec.notes}&rdquo;</p>}
+                      </div>
+                      <span className="text-[9.5px] text-slate-500 shrink-0 font-mono">
+                        {new Date(rec.timestamp).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
           {/* Action buttons */}
           <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
             <div className="text-[11px] text-slate-500">
-              Synced with Supabase Cloud DB
+              {currentUser?.role === 'admin' ? 'Synced with Supabase Cloud DB' : 'Real-Time Cloud Synced'}
             </div>
 
             <div className="flex items-center gap-2">

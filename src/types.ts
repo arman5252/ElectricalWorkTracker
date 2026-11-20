@@ -16,6 +16,21 @@ export const STAFF_MEMBERS: { name: string; username: string; title: string; rol
   { name: 'Arman (Admin)', username: 'arman', title: 'System Administrator', role: 'admin' },
 ];
 
+export interface StaffEditRecord {
+  id: string;
+  timestamp: string;
+  staffUsername: string;
+  staffName: string;
+  staffRole: string;
+  targetType: 'Cable' | 'Approval' | 'Work Assignment' | 'General';
+  targetIdentifier: string;
+  action: string;
+  fieldChanged?: string;
+  oldValue?: string;
+  newValue?: string;
+  notes?: string;
+}
+
 export type WorkPriority = 'Urgent' | 'High' | 'Medium' | 'Low';
 export type WorkAssignmentStatus = 'Assigned' | 'In Progress' | 'Under Review' | 'Completed' | 'On Hold';
 export type WorkTaskType = 

@@ -11,7 +11,8 @@ import {
   Database,
   Upload,
   UserCheck,
-  ClipboardList
+  ClipboardList,
+  History
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -29,6 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
     currentUser,
     isStaff,
     setIsLoginModalOpen,
+    setProfileModalTab,
     setIsImportModalOpen,
     logout
   } = useApp();
@@ -55,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
               </span>
             </div>
             
-            {/* Supabase Real-Time Cloud DB status indicator */}
+            {/* Real-Time Cloud DB status indicator - Database name visible ONLY for Admin profile */}
             <div className="flex items-center gap-2 mt-0.5">
               <div className="relative inline-flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
@@ -63,8 +65,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
                 <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
-                  <Database className="w-3 h-3 text-emerald-400" />
-                  Supabase Cloud DB • Real-Time Connected
+                  {currentUser?.role === 'admin' ? (
+                    <>
+                      <Database className="w-3 h-3 text-emerald-400" />
+                      <span>Supabase Cloud DB • Real-Time Connected</span>
+                    </>
+                  ) : (
+                    <span>Cloud Synchronized • Real-Time Connected</span>
+                  )}
                 </span>
               </div>
             </div>
@@ -185,10 +193,26 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
           <div className="flex items-center gap-1.5 pl-2 border-l border-slate-800">
             {currentUser ? (
               <div className="flex items-center gap-2">
+                {/* Staff Edit History Quick Button */}
                 <button
-                  onClick={() => setIsLoginModalOpen(true)}
+                  onClick={() => {
+                    setProfileModalTab('history');
+                    setIsLoginModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-300 hover:text-white bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 rounded-xl text-xs font-semibold transition-all"
+                  title="View Staff Edit History and Audit Trail"
+                >
+                  <History className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden xl:inline">Edit History</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setProfileModalTab('profile');
+                    setIsLoginModalOpen(true);
+                  }}
                   className="flex items-center gap-2 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-left transition-all"
-                  title="Click to view permissions or switch account"
+                  title="Click to view staff profile, permissions or edit history"
                 >
                   <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-xs border border-amber-500/30">
                     <ShieldCheck className="w-3.5 h-3.5" />

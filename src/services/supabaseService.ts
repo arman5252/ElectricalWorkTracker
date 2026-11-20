@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { CableEntry, WorkAssignment } from '../types';
+import { CableEntry, WorkAssignment, StaffEditRecord } from '../types';
 
 export const SUPABASE_URL_KEY = 'volttrack_supabase_url';
 export const SUPABASE_ANON_KEY = 'volttrack_supabase_anon_key';
@@ -321,6 +321,52 @@ export async function saveWorkAssignmentsToSupabase(assignments: WorkAssignment[
     return true;
   } catch (e: any) {
     console.error('[Supabase Work Assignments Save Exception]:', e?.message || e);
+    return false;
+  }
+}
+
+export const EDIT_HISTORY_RECORD_ID = '__SYSTEM_EDIT_HISTORY__';
+
+export async function fetchEditHistoryFromSupabase(): Promise<StaffEditRecord[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client
+      .from('cables')
+      .select('description')
+      .eq('id', EDIT_HISTORY_RECORD_ID)
+      .maybeSingle();
+
+    if (error || !data || !data.description) return null;
+    return JSON.parse(data.description) as StaffEditRecord[];
+  } catch (e) {
+    console.warn('[Supabase Edit History Fetch Error]:', e);
+    return null;
+  }
+}
+
+export async function saveEditHistoryToSupabase(history: StaffEditRecord[]): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  try {
+    const row = {
+      id: EDIT_HISTORY_RECORD_ID,
+      schedule_type: 'System Meta',
+      section: 'Audit Logs',
+      sr_no: '0',
+      cable_tag: '__EDIT_HISTORY__',
+      description: JSON.stringify(history.slice(0, 100)),
+      notes: 'Real-time staff edit history and audit log store',
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await client.from('cables').upsert(row, { onConflict: 'id' });
+    if (error) {
+      console.error('[Supabase Edit History Save Error]:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e: any) {
+    console.error('[Supabase Edit History Save Exception]:', e?.message || e);
     return false;
   }
 }
