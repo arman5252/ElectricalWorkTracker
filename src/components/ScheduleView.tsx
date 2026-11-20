@@ -174,7 +174,12 @@ export const ScheduleView: React.FC = () => {
 
   const openApprovalModal = (cable: CableEntry, level: 1 | 2 | 3, signerName: string) => {
     setApprovalDialog({ cable, level, signerName, action: 'sign' });
-    setApprovalNoteInput(cable.notes || '');
+    const existingNote = level === 1 
+      ? (cable.approvalNote1 || '') 
+      : level === 2 
+      ? (cable.approvalNote2 || '') 
+      : (cable.approvalNote3 || '');
+    setApprovalNoteInput(existingNote);
   };
 
   const openRevokeModal = (cable: CableEntry, level: 1 | 2 | 3, signerName: string) => {
@@ -185,10 +190,7 @@ export const ScheduleView: React.FC = () => {
     if (!approvalDialog) return;
     const { cable, level, signerName, action } = approvalDialog;
     if (action === 'sign') {
-      if (approvalNoteInput !== (cable.notes || '')) {
-        await updateCable(cable.id, { notes: approvalNoteInput });
-      }
-      await updateApprovers(cable.id, level, signerName);
+      await updateApprovers(cable.id, level, signerName, approvalNoteInput);
     } else {
       await updateApprovers(cable.id, level, '');
     }
@@ -301,10 +303,12 @@ export const ScheduleView: React.FC = () => {
       'CABLE LAYING STATUS',
       'PRE-COMMISSIONING STATUS',
       'COMMISSIONING STATUS',
-      'STAFF NOTE (BEFORE APPROVAL)',
-      'APPROVE BY (LEVEL 1)',
-      'APPROVE BY (LEVEL 2)',
-      'APPROVE BY (LEVEL 3)'
+      'APPROVE BY (LEVEL 1: NAYEM SIDDIK)',
+      'NAYEM SIDDIK NOTE (L1)',
+      'APPROVE BY (LEVEL 2: MOSSADEK HOSSAIN)',
+      'MOSSADEK HOSSAIN NOTE (L2)',
+      'APPROVE BY (LEVEL 3: MD FAHAD)',
+      'MD FAHAD NOTE (L3)'
     ];
 
     const rows = filteredCables.map(c => [
@@ -322,10 +326,12 @@ export const ScheduleView: React.FC = () => {
       `"${c.cableLayingStatus}"`,
       `"${c.preCommissioningStatus}"`,
       `"${c.commissioningStatus}"`,
-      `"${(c.notes || '').replace(/"/g, '""')}"`,
       `"${c.approvedBy1 || ''}"`,
+      `"${(c.approvalNote1 || '').replace(/"/g, '""')}"`,
       `"${c.approvedBy2 || ''}"`,
-      `"${c.approvedBy3 || ''}"`
+      `"${(c.approvalNote2 || '').replace(/"/g, '""')}"`,
+      `"${c.approvedBy3 || ''}"`,
+      `"${(c.approvalNote3 || '').replace(/"/g, '""')}"`
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -711,35 +717,33 @@ export const ScheduleView: React.FC = () => {
       {viewMode === 'table' ? (
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
           <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
-            <table className="w-full min-w-[1280px] text-left text-xs text-slate-300 border-collapse table-fixed">
+            <table className="w-full min-w-[1150px] text-left text-xs text-slate-300 border-collapse table-fixed">
               <colgroup>
                 {/* 1. Sr # */}
                 <col style={{ width: '44px' }} />
                 {/* 2. Cable Designation */}
-                <col style={{ width: '135px' }} />
+                <col style={{ width: '140px' }} />
                 {/* 3. From (Origin) */}
-                <col style={{ width: '145px' }} />
+                <col style={{ width: '155px' }} />
                 {/* 4. To (Destination) */}
-                <col style={{ width: '145px' }} />
+                <col style={{ width: '155px' }} />
                 {/* 5. Cable Laying Status */}
-                <col style={{ width: '125px' }} />
+                <col style={{ width: '130px' }} />
                 {/* 6. Pre-Commissioning Status */}
-                <col style={{ width: '125px' }} />
+                <col style={{ width: '130px' }} />
                 {/* 7. Commissioning Status */}
-                <col style={{ width: '125px' }} />
-                {/* 8. Staff Verification Note */}
-                <col style={{ width: '180px' }} />
-                {/* 9. Nayem Siddik */}
-                <col style={{ width: '105px' }} />
-                {/* 10. Mossadek Hossain */}
-                <col style={{ width: '105px' }} />
-                {/* 11. Md Fahad */}
-                <col style={{ width: '105px' }} />
-                {/* 12. View Action */}
-                <col style={{ width: '42px' }} />
+                <col style={{ width: '130px' }} />
+                {/* 8. Nayem Siddik */}
+                <col style={{ width: '115px' }} />
+                {/* 9. Mossadek Hossain */}
+                <col style={{ width: '115px' }} />
+                {/* 10. Md Fahad */}
+                <col style={{ width: '115px' }} />
+                {/* 11. View Action */}
+                <col style={{ width: '44px' }} />
               </colgroup>
 
-              {/* Top Tier Headers (Matching the navy blue group headers in screenshot) */}
+              {/* Top Tier Headers (Matching the navy blue group headers in spreadsheet) */}
               <thead>
                 <tr className="bg-[#0f2444] text-white border-b border-slate-800 text-[11px] font-bold sticky top-0 z-20">
                   <th colSpan={4} className="py-2.5 px-3 border-r border-slate-800/80 bg-[#0f2444]">
@@ -754,9 +758,6 @@ export const ScheduleView: React.FC = () => {
                   <th colSpan={1} className="py-2.5 px-3 text-center bg-[#13325c] border-r border-slate-800/80">
                     Commissioning
                   </th>
-                  <th colSpan={1} className="py-2.5 px-3 text-center bg-[#173d70] border-r border-slate-800/80 text-amber-300">
-                    Staff Verification Note
-                  </th>
                   <th colSpan={3} className="py-2.5 px-3 text-center bg-[#0f2444] border-r border-slate-800/80">
                     Approve By
                   </th>
@@ -770,17 +771,14 @@ export const ScheduleView: React.FC = () => {
                   <th className="py-2.5 px-3 bg-slate-950 border-r border-slate-800/60">From (Origin)</th>
                   <th className="py-2.5 px-3 bg-slate-950 border-r border-slate-800">To (Destination)</th>
                   
-                  {/* Cable Laying subheaders */}
+                  {/* Cable Laying subheader */}
                   <th className="py-2.5 px-2 text-center bg-slate-950 border-r border-slate-800">Status</th>
 
-                  {/* Pre-Commissioning subheaders */}
+                  {/* Pre-Commissioning subheader */}
                   <th className="py-2.5 px-2 text-center bg-slate-950 border-r border-slate-800">Status</th>
 
-                  {/* Commissioning subheaders */}
+                  {/* Commissioning subheader */}
                   <th className="py-2.5 px-2 text-center bg-slate-950 border-r border-slate-800">Status</th>
-
-                  {/* Staff Verification Note subheader */}
-                  <th className="py-2.5 px-3 border-r border-slate-800 bg-slate-950 text-amber-300">Note (Before Approval)</th>
 
                   {/* Approve By subheaders - exact matching the 3 approval persons */}
                   <th className="py-2 px-2 text-center font-bold text-slate-200 border-r border-slate-800/60 bg-slate-950">
@@ -802,7 +800,7 @@ export const ScheduleView: React.FC = () => {
               <tbody className="divide-y divide-slate-800/60 font-sans">
                 {paginatedCables.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="py-16 text-center text-slate-500">
+                    <td colSpan={11} className="py-16 text-center text-slate-500">
                       No cables matched your filters.
                     </td>
                   </tr>
@@ -822,7 +820,7 @@ export const ScheduleView: React.FC = () => {
                         <span 
                           onClick={() => setSelectedCable(cable)}
                           className="font-mono font-bold text-amber-300 hover:text-amber-200 cursor-pointer bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-xs inline-block truncate max-w-full"
-                          title={cable.cableTag}
+                          title="Click to inspect cable details & individual staff notes"
                         >
                           {cable.cableTag}
                         </span>
@@ -894,37 +892,6 @@ export const ScheduleView: React.FC = () => {
                         />
                       </td>
 
-                      {/* Staff Verification Note (Inline Editable & Persisted to Supabase) */}
-                      <td className="py-1 px-2 border-r border-slate-800 bg-slate-950/20" onClick={(e) => e.stopPropagation()}>
-                        {canEdit ? (
-                          <input
-                            type="text"
-                            defaultValue={cable.notes || ''}
-                            key={`${cable.id}-notes-${cable.notes || ''}`}
-                            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                            onBlur={(e) => {
-                              if (e.target.value !== (cable.notes || '')) {
-                                updateCable(cable.id, { notes: e.target.value });
-                              }
-                            }}
-                            placeholder="Add note before approval..."
-                            className="w-full bg-slate-900/70 hover:bg-slate-800/80 focus:bg-slate-950 border border-slate-800 focus:border-amber-400/80 rounded px-2 py-1 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none transition-colors truncate"
-                            title="Staff verification note (Press Enter to save). Shown before approval."
-                          />
-                        ) : (
-                          <div 
-                            onClick={() => {
-                              showToast('Staff Login Required: Log in to edit verification note.', 'warning');
-                              setIsLoginModalOpen(true);
-                            }}
-                            className="w-full px-2 py-1 text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer truncate"
-                            title="Click to log in and add note"
-                          >
-                            {cable.notes || <span className="italic text-slate-600">No note</span>}
-                          </div>
-                        )}
-                      </td>
-
                       {/* Approve By: Nayem Siddik (Only Nayem Siddik or Admin can sign) */}
                       <td className="py-2 px-1.5 text-center whitespace-nowrap border-r border-slate-800/60">
                         {(() => {
@@ -956,10 +923,10 @@ export const ScheduleView: React.FC = () => {
                               title={
                                 !canSign
                                   ? isApproved
-                                    ? `Signed by ${cable.approvedBy1} (Restricted to Nayem Siddik or Admin)`
+                                    ? `Signed by ${cable.approvedBy1}${cable.approvalNote1 ? `\nNayem's Note: ${cable.approvalNote1}` : ''}`
                                     : 'Restricted to Nayem Siddik (Senior Engineer) only'
                                   : isApproved
-                                  ? `Signed: ${cable.approvedBy1}. Click to revoke.`
+                                  ? `Signed: ${cable.approvedBy1}${cable.approvalNote1 ? `\nNayem's Note: ${cable.approvalNote1}` : ''}. Click to revoke.`
                                   : 'Click to enter note & sign Level 1 as Nayem Siddik'
                               }
                             >
@@ -967,6 +934,9 @@ export const ScheduleView: React.FC = () => {
                                 <>
                                   <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                                   <span className="truncate">Nayem</span>
+                                  {cable.approvalNote1 && (
+                                    <MessageSquare className="w-2.5 h-2.5 text-amber-300 shrink-0" title={`Nayem's Note: ${cable.approvalNote1}`} />
+                                  )}
                                 </>
                               ) : canSign ? (
                                 <span className="truncate">+ Sign (Nayem)</span>
@@ -1012,10 +982,10 @@ export const ScheduleView: React.FC = () => {
                               title={
                                 !canSign
                                   ? isApproved
-                                    ? `Signed by ${cable.approvedBy2} (Restricted to Mossadek Hossain or Admin)`
+                                    ? `Signed by ${cable.approvedBy2}${cable.approvalNote2 ? `\nMossadek's Note: ${cable.approvalNote2}` : ''}`
                                     : 'Restricted to Mossadek Hossain (Senior Engineer) only'
                                   : isApproved
-                                  ? `Signed: ${cable.approvedBy2}. Click to revoke.`
+                                  ? `Signed: ${cable.approvedBy2}${cable.approvalNote2 ? `\nMossadek's Note: ${cable.approvalNote2}` : ''}. Click to revoke.`
                                   : 'Click to enter note & sign Level 2 as Mossadek Hossain'
                               }
                             >
@@ -1023,6 +993,9 @@ export const ScheduleView: React.FC = () => {
                                 <>
                                   <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                                   <span className="truncate">Mossadek</span>
+                                  {cable.approvalNote2 && (
+                                    <MessageSquare className="w-2.5 h-2.5 text-amber-300 shrink-0" title={`Mossadek's Note: ${cable.approvalNote2}`} />
+                                  )}
                                 </>
                               ) : canSign ? (
                                 <span className="truncate">+ Sign (Mossadek)</span>
@@ -1068,10 +1041,10 @@ export const ScheduleView: React.FC = () => {
                               title={
                                 !canSign
                                   ? isApproved
-                                    ? `Final approval by ${cable.approvedBy3} (Restricted to Md Fahad or Admin)`
+                                    ? `Final approval by ${cable.approvedBy3}${cable.approvalNote3 ? `\nFahad's Note: ${cable.approvalNote3}` : ''}`
                                     : 'Restricted to Md Fahad (Manager PP) only'
                                   : isApproved
-                                  ? `Approved: ${cable.approvedBy3}. Click to revoke.`
+                                  ? `Approved: ${cable.approvedBy3}${cable.approvalNote3 ? `\nFahad's Note: ${cable.approvalNote3}` : ''}. Click to revoke.`
                                   : 'Click to enter note & grant final approval as Md Fahad'
                               }
                             >
@@ -1079,6 +1052,9 @@ export const ScheduleView: React.FC = () => {
                                 <>
                                   <ShieldCheck className="w-3 h-3 text-amber-400 shrink-0" />
                                   <span className="truncate">Md Fahad</span>
+                                  {cable.approvalNote3 && (
+                                    <MessageSquare className="w-2.5 h-2.5 text-amber-300 shrink-0" title={`Fahad's Note: ${cable.approvalNote3}`} />
+                                  )}
                                 </>
                               ) : canSign ? (
                                 <span className="truncate">+ Approve (Fahad)</span>
@@ -1188,34 +1164,6 @@ export const ScheduleView: React.FC = () => {
                       onChange={(newStatus) => updateCommissioningStatus(cable.id, newStatus)}
                     />
                   </div>
-                </div>
-
-                {/* Staff Note (Before Approval) in Card View */}
-                <div className="mt-2.5 p-2 bg-slate-950/70 border border-slate-850 rounded-xl space-y-1" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between text-[10px] text-amber-300 font-semibold">
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="w-2.5 h-2.5" /> Note (Before Approval)
-                    </span>
-                  </div>
-                  {canEdit ? (
-                    <input
-                      type="text"
-                      defaultValue={cable.notes || ''}
-                      key={`${cable.id}-card-note-${cable.notes || ''}`}
-                      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                      onBlur={(e) => {
-                        if (e.target.value !== (cable.notes || '')) {
-                          updateCable(cable.id, { notes: e.target.value });
-                        }
-                      }}
-                      placeholder="Add note before sign-off..."
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-amber-400 rounded-lg px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none"
-                    />
-                  ) : (
-                    <div className="text-[11px] text-slate-400 truncate italic">
-                      {cable.notes || 'No note recorded'}
-                    </div>
-                  )}
                 </div>
 
                 {/* 3-Level Approve By Bar in Card View */}
@@ -1430,17 +1378,21 @@ export const ScheduleView: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-amber-300 flex items-center gap-1.5">
                     <MessageSquare className="w-3.5 h-3.5" />
-                    Staff Verification Note (Before Approval)
+                    {approvalDialog.level === 1
+                      ? "Nayem Siddik's Note (Before Approval):"
+                      : approvalDialog.level === 2
+                      ? "Mossadek Hossain's Note (Before Approval):"
+                      : "Md Fahad's Final Approval Note:"}
                   </label>
                   <textarea
                     rows={3}
                     value={approvalNoteInput}
                     onChange={(e) => setApprovalNoteInput(e.target.value)}
-                    placeholder="Enter site verification findings, test results, or punchlist notes before confirming approval..."
+                    placeholder={`Enter ${approvalDialog.signerName}'s verification note before signing approval...`}
                     className="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/80 focus:ring-1 focus:ring-amber-400/40"
                   />
                   <p className="text-[10px] text-slate-400">
-                    This note will be permanently recorded in Supabase and visible on the schedule dashboard.
+                    This note is individually saved for {approvalDialog.signerName} and visible in Inspect Details.
                   </p>
                 </div>
               </div>

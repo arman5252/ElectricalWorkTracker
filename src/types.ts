@@ -55,9 +55,12 @@ export interface CableEntry {
   commissioningRemarks?: string;
 
   // Approvals (Approve By)
-  approvedBy1?: string; // e.g. "Naim Bhai"
-  approvedBy2?: string; // e.g. "Mosaddik Bhai"
-  approvedBy3?: string; // e.g. "Fahad Sir"
+  approvedBy1?: string; // e.g. "Nayem Siddik (Sr. Engr)"
+  approvalNote1?: string; // Nayem's individual note before approval
+  approvedBy2?: string; // e.g. "Mossadek Hossain (Sr. Engr)"
+  approvalNote2?: string; // Mossadek's individual note before approval
+  approvedBy3?: string; // e.g. "Md Fahad (Manager PP)"
+  approvalNote3?: string; // Md Fahad's individual note before approval
 
   status: CableStatus;
   updatedAt?: string;

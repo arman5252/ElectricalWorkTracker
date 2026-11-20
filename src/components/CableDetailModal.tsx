@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   Check,
   Lock,
-  LogIn
+  LogIn,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { CableEntry, CableLayingStatus, CommissioningStatus } from '../types';
@@ -43,8 +44,11 @@ export const CableDetailModal: React.FC = () => {
   );
 
   const [approvedBy1, setApprovedBy1] = useState<boolean>(Boolean(selectedCable.approvedBy1));
+  const [approvalNote1, setApprovalNote1] = useState<string>(selectedCable.approvalNote1 || '');
   const [approvedBy2, setApprovedBy2] = useState<boolean>(Boolean(selectedCable.approvedBy2));
+  const [approvalNote2, setApprovalNote2] = useState<string>(selectedCable.approvalNote2 || '');
   const [approvedBy3, setApprovedBy3] = useState<boolean>(Boolean(selectedCable.approvedBy3));
+  const [approvalNote3, setApprovalNote3] = useState<string>(selectedCable.approvalNote3 || '');
 
   const [notes, setNotes] = useState<string>(selectedCable.notes || '');
   const [drawingUrl, setDrawingUrl] = useState<string>(selectedCable.drawingUrl || '');
@@ -71,8 +75,11 @@ export const CableDetailModal: React.FC = () => {
       preCommissioningStatus,
       commissioningStatus,
       approvedBy1: newApprovedBy1,
+      approvalNote1,
       approvedBy2: newApprovedBy2,
+      approvalNote2,
       approvedBy3: newApprovedBy3,
+      approvalNote3,
       notes,
       drawingUrl
     });
@@ -272,108 +279,156 @@ export const CableDetailModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Staff Verification Note (Before Approval) */}
-          <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] font-bold text-amber-300 uppercase tracking-wide">
-              <span>Staff Verification Note (Before Approval)</span>
-              {!canEdit && <Lock className="w-3.5 h-3.5 text-slate-500" />}
-            </div>
-            <textarea
-              rows={2}
-              disabled={!canEdit}
-              placeholder="Enter site verification, megger test, or engineering note before signing approvals..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-slate-200 text-xs focus:outline-none focus:border-amber-400 placeholder:text-slate-600 resize-none"
-            />
-          </div>
-
-          {/* Approve By Tier */}
-          <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl">
-            <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wide mb-1 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                <span>Approve By Sign-Offs (Role-Restricted)</span>
+          {/* Engineering Sign-Offs & Individual Notes */}
+          <div className="p-4 bg-slate-950/70 border border-slate-800 rounded-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wide">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>Engineering Sign-Offs & Individual Staff Notes</span>
               </div>
-              <span className="text-[10px] text-slate-500 font-normal">
-                Sign off reserved to designated engineer or admin
+              <span className="text-[10px] text-slate-400">
+                Staff note recorded per approval tier
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-              {/* Nayem Siddik (Sr. Engr) */}
-              <label 
-                title={!canApproveLevel(1) ? "Sign-off allowed only for Nayem Siddik (Senior Engineer) or Admin" : "Toggle Nayem Siddik approval"}
-                className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
-                  canApproveLevel(1) ? 'cursor-pointer hover:border-emerald-500/60' : 'cursor-not-allowed opacity-75'
-                } ${
-                  approvedBy1 ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-slate-900 border-slate-800 text-slate-400'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Level 1: Nayem Siddik */}
+              <div className={`p-3 rounded-xl border space-y-2.5 transition-all ${
+                approvedBy1 ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-slate-900 border-slate-800'
+              }`}>
+                <label 
+                  title={!canApproveLevel(1) ? "Sign-off allowed only for Nayem Siddik (Senior Engineer) or Admin" : "Toggle Nayem Siddik approval"}
+                  className={`flex items-center justify-between cursor-pointer select-none ${
+                    !canApproveLevel(1) ? 'opacity-75 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      disabled={!canApproveLevel(1)}
+                      checked={approvedBy1}
+                      onChange={(e) => setApprovedBy1(e.target.checked)}
+                      className="rounded text-emerald-500 focus:ring-emerald-500 disabled:opacity-50"
+                    />
+                    <div>
+                      <span className="font-semibold text-xs text-white block">Nayem Siddik</span>
+                      <span className="text-[9px] text-slate-400 block">Level 1 • Sr. Engineer</span>
+                    </div>
+                  </div>
+                  {!canApproveLevel(1) ? (
+                    <Lock className="w-3 h-3 text-slate-500" />
+                  ) : approvedBy1 ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : null}
+                </label>
+
+                {/* Individual Note for Nayem Siddik */}
+                <div className="space-y-1 pt-1 border-t border-slate-800/60">
+                  <label className="text-[10px] font-semibold text-amber-300 flex items-center gap-1">
+                    <MessageSquare className="w-2.5 h-2.5" /> Nayem Siddik's Note:
+                  </label>
+                  <textarea
+                    rows={2}
                     disabled={!canApproveLevel(1)}
-                    checked={approvedBy1}
-                    onChange={(e) => setApprovedBy1(e.target.checked)}
-                    className="rounded text-emerald-500 focus:ring-emerald-500 disabled:opacity-50"
+                    placeholder="Enter site findings or notes before L1 approval..."
+                    value={approvalNote1}
+                    onChange={(e) => setApprovalNote1(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700/80 disabled:opacity-75 rounded-lg text-slate-200 text-xs focus:outline-none focus:border-amber-400 placeholder:text-slate-600 resize-none"
                   />
-                  <div>
-                    <span className="font-semibold text-xs block">Nayem Siddik (Sr. Engr)</span>
-                    <span className="text-[9px] text-slate-500 block">Nayem Siddik / Admin</span>
-                  </div>
                 </div>
-                {!canApproveLevel(1) && <Lock className="w-3 h-3 text-slate-500" />}
-              </label>
+              </div>
 
-              {/* Mossadek Hossain (Sr. Engr) */}
-              <label 
-                title={!canApproveLevel(2) ? "Sign-off allowed only for Mossadek Hossain (Senior Engineer) or Admin" : "Toggle Mossadek Hossain approval"}
-                className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
-                  canApproveLevel(2) ? 'cursor-pointer hover:border-emerald-500/60' : 'cursor-not-allowed opacity-75'
-                } ${
-                  approvedBy2 ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-slate-900 border-slate-800 text-slate-400'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+              {/* Level 2: Mossadek Hossain */}
+              <div className={`p-3 rounded-xl border space-y-2.5 transition-all ${
+                approvedBy2 ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-slate-900 border-slate-800'
+              }`}>
+                <label 
+                  title={!canApproveLevel(2) ? "Sign-off allowed only for Mossadek Hossain (Senior Engineer) or Admin" : "Toggle Mossadek Hossain approval"}
+                  className={`flex items-center justify-between cursor-pointer select-none ${
+                    !canApproveLevel(2) ? 'opacity-75 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      disabled={!canApproveLevel(2)}
+                      checked={approvedBy2}
+                      onChange={(e) => setApprovedBy2(e.target.checked)}
+                      className="rounded text-emerald-500 focus:ring-emerald-500 disabled:opacity-50"
+                    />
+                    <div>
+                      <span className="font-semibold text-xs text-white block">Mossadek Hossain</span>
+                      <span className="text-[9px] text-slate-400 block">Level 2 • Sr. Engineer</span>
+                    </div>
+                  </div>
+                  {!canApproveLevel(2) ? (
+                    <Lock className="w-3 h-3 text-slate-500" />
+                  ) : approvedBy2 ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : null}
+                </label>
+
+                {/* Individual Note for Mossadek Hossain */}
+                <div className="space-y-1 pt-1 border-t border-slate-800/60">
+                  <label className="text-[10px] font-semibold text-amber-300 flex items-center gap-1">
+                    <MessageSquare className="w-2.5 h-2.5" /> Mossadek Hossain's Note:
+                  </label>
+                  <textarea
+                    rows={2}
                     disabled={!canApproveLevel(2)}
-                    checked={approvedBy2}
-                    onChange={(e) => setApprovedBy2(e.target.checked)}
-                    className="rounded text-emerald-500 focus:ring-emerald-500 disabled:opacity-50"
+                    placeholder="Enter verification notes before L2 approval..."
+                    value={approvalNote2}
+                    onChange={(e) => setApprovalNote2(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700/80 disabled:opacity-75 rounded-lg text-slate-200 text-xs focus:outline-none focus:border-amber-400 placeholder:text-slate-600 resize-none"
                   />
-                  <div>
-                    <span className="font-semibold text-xs block">Mossadek Hossain (Sr. Engr)</span>
-                    <span className="text-[9px] text-slate-500 block">Mossadek Hossain / Admin</span>
-                  </div>
                 </div>
-                {!canApproveLevel(2) && <Lock className="w-3 h-3 text-slate-500" />}
-              </label>
+              </div>
 
-              {/* Md Fahad (Manager PP) */}
-              <label 
-                title={!canApproveLevel(3) ? "Final sign-off allowed only for Md Fahad (Manager PP) or Admin" : "Toggle Md Fahad approval"}
-                className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
-                  canApproveLevel(3) ? 'cursor-pointer hover:border-amber-500/60' : 'cursor-not-allowed opacity-75'
-                } ${
-                  approvedBy3 ? 'bg-amber-500/15 border-amber-500/50 text-amber-300 font-bold' : 'bg-slate-900 border-slate-800 text-slate-400'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    disabled={!canApproveLevel(3)}
-                    checked={approvedBy3}
-                    onChange={(e) => setApprovedBy3(e.target.checked)}
-                    className="rounded text-amber-500 focus:ring-amber-500 disabled:opacity-50"
-                  />
-                  <div>
-                    <span className="text-xs block font-bold">Md Fahad (Manager PP)</span>
-                    <span className="text-[9px] text-slate-500 block">Md Fahad (Final) / Admin</span>
+              {/* Level 3: Md Fahad */}
+              <div className={`p-3 rounded-xl border space-y-2.5 transition-all ${
+                approvedBy3 ? 'bg-amber-500/15 border-amber-500/50' : 'bg-slate-900 border-slate-800'
+              }`}>
+                <label 
+                  title={!canApproveLevel(3) ? "Final sign-off allowed only for Md Fahad (Manager PP) or Admin" : "Toggle Md Fahad approval"}
+                  className={`flex items-center justify-between cursor-pointer select-none ${
+                    !canApproveLevel(3) ? 'opacity-75 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      disabled={!canApproveLevel(3)}
+                      checked={approvedBy3}
+                      onChange={(e) => setApprovedBy3(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-amber-500 disabled:opacity-50"
+                    />
+                    <div>
+                      <span className="font-bold text-xs text-white block">Md Fahad</span>
+                      <span className="text-[9px] text-amber-400/80 block">Level 3 • Manager PP (Final)</span>
+                    </div>
                   </div>
+                  {!canApproveLevel(3) ? (
+                    <Lock className="w-3 h-3 text-slate-500" />
+                  ) : approvedBy3 ? (
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  ) : null}
+                </label>
+
+                {/* Individual Note for Md Fahad */}
+                <div className="space-y-1 pt-1 border-t border-slate-800/60">
+                  <label className="text-[10px] font-semibold text-amber-300 flex items-center gap-1">
+                    <MessageSquare className="w-2.5 h-2.5" /> Md Fahad's Final Note:
+                  </label>
+                  <textarea
+                    rows={2}
+                    disabled={!canApproveLevel(3)}
+                    placeholder="Enter management notes before final approval..."
+                    value={approvalNote3}
+                    onChange={(e) => setApprovalNote3(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700/80 disabled:opacity-75 rounded-lg text-slate-200 text-xs focus:outline-none focus:border-amber-400 placeholder:text-slate-600 resize-none"
+                  />
                 </div>
-                {!canApproveLevel(3) && <Lock className="w-3 h-3 text-slate-500" />}
-              </label>
+              </div>
             </div>
           </div>
 

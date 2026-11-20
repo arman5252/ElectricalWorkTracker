@@ -77,7 +77,7 @@ interface AppContextType {
   updateCableLayingStatus: (id: string, status: CableLayingStatus, remarks?: string) => void;
   updatePreCommissioningStatus: (id: string, status: CommissioningStatus, remarks?: string) => void;
   updateCommissioningStatus: (id: string, status: CommissioningStatus, remarks?: string) => void;
-  updateApprovers: (id: string, level: 1 | 2 | 3, name: string) => void;
+  updateApprovers: (id: string, level: 1 | 2 | 3, name: string, note?: string) => void;
   updateCable: (id: string, updates: Partial<CableEntry>) => void;
   addSingleCable: (cable: CableEntry, saveToSupabase?: boolean) => Promise<boolean>;
   bulkImportCables: (newCables: CableEntry[], mode?: 'append' | 'replace', saveToSupabase?: boolean) => Promise<number>;
@@ -312,10 +312,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         'Cable Laying Status': c.cableLayingStatus || 'Pending',
         'Pre-Commissioning Status': c.preCommissioningStatus || 'Pending',
         'Commissioning Status': c.commissioningStatus || 'Pending',
-        'Staff Note (Before Approval)': c.notes || '',
         'Approve: Nayem Siddik (Sr. Engr)': c.approvedBy1 || '',
+        'Nayem Siddik Note (L1)': c.approvalNote1 || '',
         'Approve: Mossadek Hossain (Sr. Engr)': c.approvedBy2 || '',
+        'Mossadek Hossain Note (L2)': c.approvalNote2 || '',
         'Approve: Md Fahad (Manager PP)': c.approvedBy3 || '',
+        'Md Fahad Note (L3)': c.approvalNote3 || '',
+        'General Notes': c.notes || '',
         'Last Updated': c.updatedAt || new Date().toISOString()
       }));
 
@@ -456,7 +459,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateApprovers = async (id: string, level: 1 | 2 | 3, name: string) => {
+  const updateApprovers = async (id: string, level: 1 | 2 | 3, name: string, note?: string) => {
     if (!canApproveLevel(level)) {
       const allowedNames = { 1: 'Nayem Siddik (Senior Engineer)', 2: 'Mossadek Hossain (Senior Engineer)', 3: 'Md Fahad (Manager PP)' };
       showToast(`Access Restricted: Level ${level} sign-off can only be approved by ${allowedNames[level]} or Admin.`, 'warning');
@@ -470,8 +473,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated: CableEntry = { 
       ...existing, 
       approvedBy1: level === 1 ? name : existing.approvedBy1,
+      approvalNote1: level === 1 && note !== undefined ? note : existing.approvalNote1,
       approvedBy2: level === 2 ? name : existing.approvedBy2,
+      approvalNote2: level === 2 && note !== undefined ? note : existing.approvalNote2,
       approvedBy3: level === 3 ? name : existing.approvedBy3,
+      approvalNote3: level === 3 && note !== undefined ? note : existing.approvalNote3,
       updatedAt: new Date().toISOString() 
     };
 
