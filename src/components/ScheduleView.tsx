@@ -79,23 +79,23 @@ export const StatusPill: React.FC<{
           onBlocked?.();
         }}
         title="Public Viewer Mode: Click to log in as Senior Engineer or Admin to change status"
-        className={`inline-flex items-center justify-center gap-1.5 cursor-pointer py-1 px-3 rounded-full text-[11px] border border-white/10 opacity-90 transition-all hover:opacity-100 hover:ring-1 hover:ring-amber-400/50 min-w-[145px] text-center select-none ${getPillStyle(norm)}`}
+        className={`inline-flex items-center justify-center gap-1 cursor-pointer py-1 px-2 rounded-full text-[10.5px] border border-white/10 opacity-90 transition-all hover:opacity-100 hover:ring-1 hover:ring-amber-400/50 w-full max-w-[118px] text-center select-none truncate ${getPillStyle(norm)}`}
       >
-        <span>{norm}</span>
-        <Lock className="w-2.5 h-2.5 opacity-60" />
+        <span className="truncate">{norm}</span>
+        <Lock className="w-2.5 h-2.5 opacity-60 shrink-0" />
       </div>
     );
   }
 
   return (
     <div 
-      className="relative inline-block whitespace-nowrap shrink-0"
+      className="relative inline-block whitespace-nowrap w-full max-w-[118px]"
       onClick={(e) => e.stopPropagation()}
     >
       <select
         value={norm}
         onChange={(e) => onChange(e.target.value)}
-        className={`appearance-none cursor-pointer py-1 pl-3 pr-6 rounded-full text-[11px] tracking-tight border border-white/10 focus:outline-none transition-all whitespace-nowrap min-w-[145px] text-center ${getPillStyle(norm)}`}
+        className={`appearance-none cursor-pointer py-1 pl-2 pr-5 rounded-full text-[10.5px] tracking-tight border border-white/10 focus:outline-none transition-all w-full text-center truncate ${getPillStyle(norm)}`}
       >
         <option value="Complete By VEL" className="bg-slate-900 text-emerald-400 py-1 font-bold">✓ Complete By VEL</option>
         <option value="Complete By Bargen" className="bg-slate-900 text-emerald-300 py-1 font-bold">✓ Complete By Bargen</option>
@@ -106,7 +106,7 @@ export const StatusPill: React.FC<{
         <option value="Out of Scope" className="bg-slate-900 text-slate-400 py-1 font-semibold">Out of Scope</option>
         <option value="N/A" className="bg-slate-900 text-slate-400 py-1 font-semibold">N/A</option>
       </select>
-      <ChevronDown className={`w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${
+      <ChevronDown className={`w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${
         norm === 'Progress' ? 'text-[#14532d]' : 'text-white/80'
       }`} />
     </div>
@@ -710,33 +710,33 @@ export const ScheduleView: React.FC = () => {
       {/* Table View matching user spreadsheet layout */}
       {viewMode === 'table' ? (
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto max-h-[calc(100vh-230px)] overflow-y-auto">
-            <table className="w-full min-w-[1480px] text-left text-xs text-slate-300 border-collapse table-fixed">
+          <div className="overflow-x-auto max-h-[75vh] overflow-y-auto">
+            <table className="w-full min-w-[1280px] text-left text-xs text-slate-300 border-collapse table-fixed">
               <colgroup>
                 {/* 1. Sr # */}
-                <col style={{ width: '50px' }} />
+                <col style={{ width: '44px' }} />
                 {/* 2. Cable Designation */}
-                <col style={{ width: '150px' }} />
+                <col style={{ width: '135px' }} />
                 {/* 3. From (Origin) */}
-                <col style={{ width: '160px' }} />
+                <col style={{ width: '145px' }} />
                 {/* 4. To (Destination) */}
-                <col style={{ width: '160px' }} />
+                <col style={{ width: '145px' }} />
                 {/* 5. Cable Laying Status */}
-                <col style={{ width: '145px' }} />
+                <col style={{ width: '125px' }} />
                 {/* 6. Pre-Commissioning Status */}
-                <col style={{ width: '145px' }} />
+                <col style={{ width: '125px' }} />
                 {/* 7. Commissioning Status */}
-                <col style={{ width: '145px' }} />
+                <col style={{ width: '125px' }} />
                 {/* 8. Staff Verification Note */}
-                <col style={{ width: '215px' }} />
+                <col style={{ width: '180px' }} />
                 {/* 9. Nayem Siddik */}
-                <col style={{ width: '130px' }} />
+                <col style={{ width: '105px' }} />
                 {/* 10. Mossadek Hossain */}
-                <col style={{ width: '130px' }} />
+                <col style={{ width: '105px' }} />
                 {/* 11. Md Fahad */}
-                <col style={{ width: '130px' }} />
+                <col style={{ width: '105px' }} />
                 {/* 12. View Action */}
-                <col style={{ width: '50px' }} />
+                <col style={{ width: '42px' }} />
               </colgroup>
 
               {/* Top Tier Headers (Matching the navy blue group headers in screenshot) */}
