@@ -30,6 +30,7 @@ export const WorkAssignmentsView: React.FC = () => {
     deleteWorkAssignment, 
     openAssignWorkModal, 
     currentUser,
+    isStaff,
     setSelectedCable,
     cables,
     setActiveView
@@ -127,13 +128,16 @@ export const WorkAssignmentsView: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => openAssignWorkModal()}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-extrabold rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 active:scale-95 shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Assign New Work</span>
-        </button>
+        {/* Assign New Work Button - Staff Profile Only */}
+        {isStaff && (
+          <button
+            onClick={() => openAssignWorkModal()}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-extrabold rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 active:scale-95 shrink-0 self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Assign New Work</span>
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -298,12 +302,14 @@ export const WorkAssignmentsView: React.FC = () => {
           <UserCheck className="w-10 h-10 text-slate-600 mx-auto mb-2.5" />
           <h3 className="text-sm font-bold text-slate-300">No work assignments found</h3>
           <p className="text-slate-500 text-xs mt-1">Try adjusting your search or filters, or assign a new task to staff.</p>
-          <button
-            onClick={() => openAssignWorkModal()}
-            className="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md shadow-amber-500/20"
-          >
-            + Assign Work to Staff
-          </button>
+          {isStaff && (
+            <button
+              onClick={() => openAssignWorkModal()}
+              className="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md shadow-amber-500/20"
+            >
+              + Assign Work to Staff
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -476,30 +482,32 @@ export const WorkAssignmentsView: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Reassign / Delete buttons */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => {
-                        const nextStaff = STAFF_MEMBERS.find(s => s.username !== assignment.assignedToUsername) || STAFF_MEMBERS[0];
-                        updateWorkAssignment(assignment.id, { 
-                          assignedToName: nextStaff.name, 
-                          assignedToUsername: nextStaff.username 
-                        });
-                      }}
-                      title="Reassign to another staff"
-                      className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                    </button>
+                  {/* Reassign / Delete buttons - Staff Profile Only */}
+                  {isStaff && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          const nextStaff = STAFF_MEMBERS.find(s => s.username !== assignment.assignedToUsername) || STAFF_MEMBERS[0];
+                          updateWorkAssignment(assignment.id, { 
+                            assignedToName: nextStaff.name, 
+                            assignedToUsername: nextStaff.username 
+                          });
+                        }}
+                        title="Reassign to another staff"
+                        className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
 
-                    <button
-                      onClick={() => deleteWorkAssignment(assignment.id)}
-                      title="Delete assignment"
-                      className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => deleteWorkAssignment(assignment.id)}
+                        title="Delete assignment"
+                        className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
               </div>

@@ -9,7 +9,7 @@ import {
   WorkAssignment,
   STAFF_MEMBERS
 } from '../types';
-import { AUTH_STORAGE_KEY, canEditSchedule, canSignApproval } from '../services/authService';
+import { AUTH_STORAGE_KEY, canEditSchedule, canSignApproval, isStaffProfile } from '../services/authService';
 import { initialCables, boqSummary, projectMeta } from '../data/cableData';
 import { 
   getSupabaseClient, 
@@ -123,6 +123,7 @@ interface AppContextType {
   login: (user: AppUser) => void;
   logout: () => void;
   canEdit: boolean;
+  isStaff: boolean;
   canApproveLevel: (level: 1 | 2 | 3) => boolean;
   
   // Database Connection Status
@@ -234,11 +235,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [preselectedCableForAssignment, setPreselectedCableForAssignment] = useState<CableEntry | null>(null);
 
-  const openAssignWorkModal = (cable?: CableEntry | null) => {
-    setPreselectedCableForAssignment(cable || null);
-    setIsAssignModalOpen(true);
-  };
-
   useEffect(() => {
     try {
       localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(workAssignments));
@@ -271,7 +267,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const canEdit = canEditSchedule(currentUser);
+  const isStaff = isStaffProfile(currentUser);
   const canApproveLevel = (level: 1 | 2 | 3) => canSignApproval(currentUser, level);
+
+  const openAssignWorkModal = (cable?: CableEntry | null) => {
+    if (!isStaff) {
+      showToast('Assign Work option is only accessible to Staff profiles. Please log in.', 'error');
+      setIsLoginModalOpen(true);
+      return;
+    }
+    setPreselectedCableForAssignment(cable || null);
+    setIsAssignModalOpen(true);
+  };
 
   const [dbStatus, setDbStatus] = useState<'connected' | 'connecting' | 'standby'>('connecting');
 
@@ -758,6 +765,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const createWorkAssignment = async (data: Omit<WorkAssignment, 'id' | 'createdAt'>): Promise<WorkAssignment> => {
+    if (!isStaff) {
+      showToast('Staff profile required to assign work.', 'error');
+      setIsLoginModalOpen(true);
+      throw new Error('Staff profile required to assign work.');
+    }
+
     const id = `WRK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
     const newAssignment: WorkAssignment = {
       ...data,
@@ -790,6 +803,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateWorkAssignment = async (id: string, updates: Partial<WorkAssignment>): Promise<boolean> => {
+    if (!isStaff) {
+      showToast('Staff profile required to update work assignments.', 'error');
+      setIsLoginModalOpen(true);
+      return false;
+    }
+
     const nextAssignments = workAssignments.map(a => a.id === id ? { ...a, ...updates } : a);
     setWorkAssignments(nextAssignments);
     try {
@@ -815,6 +834,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteWorkAssignment = async (id: string): Promise<boolean> => {
+    if (!isStaff) {
+      showToast('Staff profile required to delete work assignments.', 'error');
+      setIsLoginModalOpen(true);
+      return false;
+    }
+
     const assignment = workAssignments.find(a => a.id === id);
     const nextAssignments = workAssignments.filter(a => a.id !== id);
     setWorkAssignments(nextAssignments);
@@ -862,6 +887,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       login,
       logout,
       canEdit,
+      isStaff,
       canApproveLevel,
       dbStatus,
       reloadFromSupabase,

@@ -120,6 +120,11 @@ export function authenticate(username: string, password: string): AppUser | null
   return null;
 }
 
+export function isStaffProfile(user: AppUser | null): boolean {
+  if (!user) return false;
+  return user.role === 'admin' || user.role === 'engineer' || user.role === 'manager';
+}
+
 export function canEditSchedule(user: AppUser | null): boolean {
   if (!user) return false;
   return user.role === 'admin' || user.role === 'engineer' || user.role === 'manager';

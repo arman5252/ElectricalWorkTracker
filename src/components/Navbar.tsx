@@ -27,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
     workAssignments,
     openAssignWorkModal,
     currentUser,
+    isStaff,
     setIsLoginModalOpen,
     setIsImportModalOpen,
     logout
@@ -143,15 +144,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
 
         {/* Settings & Auth */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Quick Assign Work Button */}
-          <button
-            onClick={() => openAssignWorkModal()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 active:scale-95"
-            title="Assign new work to another staff member"
-          >
-            <UserCheck className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span className="hidden sm:inline">Assign Work</span>
-          </button>
+          {/* Quick Assign Work Button - Staff Profile Only */}
+          {isStaff && (
+            <button
+              onClick={() => openAssignWorkModal()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 active:scale-95"
+              title="Assign new work to another staff member"
+            >
+              <UserCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span className="hidden sm:inline">Assign Work</span>
+            </button>
+          )}
 
           {/* Import Data button - Admin Profile Only */}
           {currentUser?.role === 'admin' && (

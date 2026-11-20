@@ -23,7 +23,8 @@ export const App: React.FC = () => {
     setIsImportModalOpen, 
     isAssignModalOpen,
     setIsAssignModalOpen,
-    currentUser 
+    currentUser,
+    isStaff
   } = useApp();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -48,11 +49,13 @@ export const App: React.FC = () => {
       {/* Cable Details Drawer / Inspection Modal */}
       <CableDetailModal />
 
-      {/* Work Assignment Modal - Assign Work to Staff */}
-      <AssignWorkModal
-        isOpen={isAssignModalOpen}
-        onClose={() => setIsAssignModalOpen(false)}
-      />
+      {/* Work Assignment Modal - Assign Work to Staff (Staff Profile Only) */}
+      {isStaff && (
+        <AssignWorkModal
+          isOpen={isAssignModalOpen}
+          onClose={() => setIsAssignModalOpen(false)}
+        />
+      )}
 
       {/* Google Spreadsheet & Drive Cloud Integration Modal - Admin Profile Only */}
       {currentUser?.role === 'admin' && (

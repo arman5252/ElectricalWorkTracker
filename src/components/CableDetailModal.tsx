@@ -28,6 +28,7 @@ export const CableDetailModal: React.FC = () => {
     openAssignWorkModal,
     isSyncing,
     currentUser,
+    isStaff,
     canEdit,
     canApproveLevel,
     setIsLoginModalOpen
@@ -294,14 +295,16 @@ export const CableDetailModal: React.FC = () => {
                 <UserCheck className="w-4 h-4 text-amber-400" />
                 <span>Staff Work Assignment</span>
               </div>
-              <button
-                type="button"
-                onClick={() => openAssignWorkModal(selectedCable)}
-                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 transition-all shadow-sm active:scale-95"
-              >
-                <UserCheck className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>{linkedAssignment ? 'Reassign / Edit Work' : 'Assign to Staff'}</span>
-              </button>
+              {isStaff && (
+                <button
+                  type="button"
+                  onClick={() => openAssignWorkModal(selectedCable)}
+                  className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 transition-all shadow-sm active:scale-95"
+                >
+                  <UserCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>{linkedAssignment ? 'Reassign / Edit Work' : 'Assign to Staff'}</span>
+                </button>
+              )}
             </div>
 
             {linkedAssignment ? (
@@ -329,13 +332,15 @@ export const CableDetailModal: React.FC = () => {
                   <AlertCircle className="w-4 h-4 text-slate-500 shrink-0" />
                   <span>No staff member is currently assigned to this cable.</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openAssignWorkModal(selectedCable)}
-                  className="text-amber-400 hover:underline font-semibold text-xs"
-                >
-                  Assign Now &rarr;
-                </button>
+                {isStaff && (
+                  <button
+                    type="button"
+                    onClick={() => openAssignWorkModal(selectedCable)}
+                    className="text-amber-400 hover:underline font-semibold text-xs"
+                  >
+                    Assign Now &rarr;
+                  </button>
+                )}
               </div>
             )}
           </div>

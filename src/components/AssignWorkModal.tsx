@@ -102,7 +102,7 @@ export const AssignWorkModal: React.FC<AssignWorkModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !currentUser || currentUser.role === 'viewer') return null;
 
   const targetStaff = STAFF_MEMBERS.find(s => s.username === assignedToUsername) || STAFF_MEMBERS[0];
   const assignerStaff = currentUser 
@@ -191,7 +191,7 @@ export const AssignWorkModal: React.FC<AssignWorkModalProps> = ({
           )}
 
           {/* 1. Who is Assigning (Staff Auth Indicator) */}
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
               <div>
@@ -200,29 +200,9 @@ export const AssignWorkModal: React.FC<AssignWorkModalProps> = ({
                 <span className="text-slate-400 text-[10px]">({assignerStaff.title})</span>
               </div>
             </div>
-            {!currentUser && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-amber-300">Identity:</span>
-                <select
-                  value={assignerUsername}
-                  onChange={(e) => setAssignerUsername(e.target.value)}
-                  className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-amber-400"
-                >
-                  {STAFF_MEMBERS.map(s => (
-                    <option key={s.username} value={s.username}>
-                      {s.name} ({s.title})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setIsLoginModalOpen(true)}
-                  className="text-[10px] text-amber-400 hover:underline font-semibold"
-                >
-                  Log in
-                </button>
-              </div>
-            )}
+            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20">
+              Staff Verified
+            </span>
           </div>
 
           {/* 2. Assignee Selection (Who Receives the Work) */}
