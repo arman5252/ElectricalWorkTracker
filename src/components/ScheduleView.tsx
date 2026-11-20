@@ -229,9 +229,30 @@ export const ScheduleView: React.FC = () => {
       if (cableTypeFilter !== 'All' && cable.cableType !== cableTypeFilter) return false;
 
       // 3 Stages Filters with normalized comparison
-      if (cableLayingFilter !== 'All' && normalizeStatus(cable.cableLayingStatus) !== normalizeStatus(cableLayingFilter)) return false;
-      if (preCommissioningFilter !== 'All' && normalizeStatus(cable.preCommissioningStatus) !== normalizeStatus(preCommissioningFilter)) return false;
-      if (commissioningFilter !== 'All' && normalizeStatus(cable.commissioningStatus) !== normalizeStatus(commissioningFilter)) return false;
+      if (cableLayingFilter !== 'All') {
+        const norm = normalizeStatus(cable.cableLayingStatus);
+        if (cableLayingFilter === 'Done' || cableLayingFilter === 'Completed' || cableLayingFilter === 'All Completed') {
+          if (norm !== 'Complete By VEL' && norm !== 'Complete By Bargen') return false;
+        } else if (norm !== normalizeStatus(cableLayingFilter)) {
+          return false;
+        }
+      }
+      if (preCommissioningFilter !== 'All') {
+        const norm = normalizeStatus(cable.preCommissioningStatus);
+        if (preCommissioningFilter === 'Done' || preCommissioningFilter === 'Completed' || preCommissioningFilter === 'All Completed') {
+          if (norm !== 'Complete By VEL' && norm !== 'Complete By Bargen') return false;
+        } else if (norm !== normalizeStatus(preCommissioningFilter)) {
+          return false;
+        }
+      }
+      if (commissioningFilter !== 'All') {
+        const norm = normalizeStatus(cable.commissioningStatus);
+        if (commissioningFilter === 'Done' || commissioningFilter === 'Completed' || commissioningFilter === 'All Completed') {
+          if (norm !== 'Complete By VEL' && norm !== 'Complete By Bargen') return false;
+        } else if (norm !== normalizeStatus(commissioningFilter)) {
+          return false;
+        }
+      }
       if (approverFilter !== 'All') {
         if ((approverFilter === 'Fahad Sir' || approverFilter === 'Md Fahad (Manager PP)') && !cable.approvedBy3) return false;
         if ((approverFilter === 'Mosaddik Bhai' || approverFilter === 'Mossadek Hossain (Sr. Engr)') && !cable.approvedBy2) return false;
@@ -613,6 +634,7 @@ export const ScheduleView: React.FC = () => {
                 className="w-full py-1.5 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-400 truncate"
               >
                 <option value="All">Laying: All</option>
+                <option value="Done" className="font-bold text-emerald-400">✓ Laying: Total Done (VEL & Bargen)</option>
                 <option value="Complete By VEL">Laying: Complete By VEL</option>
                 <option value="Complete By Bargen">Laying: Complete By Bargen</option>
                 <option value="Progress">Laying: Progress</option>
@@ -632,6 +654,7 @@ export const ScheduleView: React.FC = () => {
                 className="w-full py-1.5 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-400 truncate"
               >
                 <option value="All">Pre-Comm: All</option>
+                <option value="Done" className="font-bold text-emerald-400">✓ Pre-Comm: Total Done (Bargen & VEL)</option>
                 <option value="Complete By Bargen">Pre-Comm: Complete By Bargen</option>
                 <option value="Complete By VEL">Pre-Comm: Complete By VEL</option>
                 <option value="Progress">Pre-Comm: Progress</option>
@@ -651,6 +674,7 @@ export const ScheduleView: React.FC = () => {
                 className="w-full py-1.5 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-400 truncate"
               >
                 <option value="All">Comm: All</option>
+                <option value="Done" className="font-bold text-emerald-400">✓ Comm: Total Done (Bargen & VEL)</option>
                 <option value="Complete By Bargen">Comm: Complete By Bargen</option>
                 <option value="Complete By VEL">Comm: Complete By VEL</option>
                 <option value="Progress">Comm: Progress</option>
