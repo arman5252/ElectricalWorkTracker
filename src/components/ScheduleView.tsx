@@ -22,7 +22,8 @@ import {
   PlusCircle,
   Lock,
   ShieldCheck,
-  MessageSquare
+  MessageSquare,
+  UserCheck
 } from 'lucide-react';
 
 export const normalizeStatus = (status?: string): string => {
