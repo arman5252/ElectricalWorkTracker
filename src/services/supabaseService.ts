@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { CableEntry } from '../types';
+import { CableEntry, WorkAssignment } from '../types';
 
 export const SUPABASE_URL_KEY = 'volttrack_supabase_url';
 export const SUPABASE_ANON_KEY = 'volttrack_supabase_anon_key';
@@ -209,7 +209,8 @@ export async function fetchAllCablesFromSupabase(): Promise<CableEntry[] | null>
     }
 
     if (!data || data.length === 0) return [];
-    const mapped = data.map(mapDbRowToCableEntry);
+    const validRows = data.filter(r => !String(r.id || '').startsWith('__SYSTEM_'));
+    const mapped = validRows.map(mapDbRowToCableEntry);
     return sortCablesInOrder(mapped);
   } catch (e) {
     console.warn('[Supabase Fetch Exception]:', e);
@@ -275,5 +276,51 @@ export async function bulkSeedCablesToSupabase(cables: CableEntry[], onProgress?
     return { success: true, count: inserted };
   } catch (err: any) {
     return { success: false, count: 0, error: err.message };
+  }
+}
+
+export const WORK_ASSIGNMENTS_RECORD_ID = '__SYSTEM_WORK_ASSIGNMENTS__';
+
+export async function fetchWorkAssignmentsFromSupabase(): Promise<WorkAssignment[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client
+      .from('cables')
+      .select('description')
+      .eq('id', WORK_ASSIGNMENTS_RECORD_ID)
+      .maybeSingle();
+
+    if (error || !data || !data.description) return null;
+    return JSON.parse(data.description) as WorkAssignment[];
+  } catch (e) {
+    console.warn('[Supabase Work Assignments Fetch Error]:', e);
+    return null;
+  }
+}
+
+export async function saveWorkAssignmentsToSupabase(assignments: WorkAssignment[]): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  try {
+    const row = {
+      id: WORK_ASSIGNMENTS_RECORD_ID,
+      schedule_type: 'System Meta',
+      section: 'Work Management',
+      sr_no: '0',
+      cable_tag: '__WORK_ASSIGNMENTS__',
+      description: JSON.stringify(assignments),
+      notes: 'Real-time staff work assignments and task distribution store',
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await client.from('cables').upsert(row, { onConflict: 'id' });
+    if (error) {
+      console.error('[Supabase Work Assignments Save Error]:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e: any) {
+    console.error('[Supabase Work Assignments Save Exception]:', e?.message || e);
+    return false;
   }
 }

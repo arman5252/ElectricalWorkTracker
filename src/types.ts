@@ -9,6 +9,57 @@ export interface AppUser {
   approvalName?: string;
 }
 
+export const STAFF_MEMBERS: { name: string; username: string; title: string; role: UserRole }[] = [
+  { name: 'Nayem Siddik', username: 'Nayem', title: 'Senior Engineer', role: 'engineer' },
+  { name: 'Mossadek Hossain', username: 'Mossadek', title: 'Senior Engineer', role: 'engineer' },
+  { name: 'Md Fahad', username: 'Fahad', title: 'Manager PP', role: 'manager' },
+  { name: 'Arman (Admin)', username: 'arman', title: 'System Administrator', role: 'admin' },
+];
+
+export type WorkPriority = 'Urgent' | 'High' | 'Medium' | 'Low';
+export type WorkAssignmentStatus = 'Assigned' | 'In Progress' | 'Under Review' | 'Completed' | 'On Hold';
+export type WorkTaskType = 
+  | 'Cable Laying' 
+  | 'Pre-Commissioning' 
+  | 'Commissioning' 
+  | 'Insulation & Megger Test' 
+  | 'Glanding & Termination' 
+  | 'Tray & Conduit Inspection' 
+  | 'Punch List & Rectification' 
+  | 'General Electrical Work';
+
+export interface WorkAssignment {
+  id: string; // e.g. "WRK-2026-001"
+  title: string; // e.g. "Megger Test on Trafo Feeders"
+  description: string; // Detailed instructions or work scope
+  taskType: WorkTaskType;
+  priority: WorkPriority;
+  status: WorkAssignmentStatus;
+  
+  // Assignee
+  assignedToName: string; // "Nayem Siddik", "Mossadek Hossain", "Md Fahad", "Arman (Admin)"
+  assignedToUsername: string; // "Nayem", "Mossadek", "Fahad", "arman"
+  
+  // Assigner
+  assignedByName: string; // "Md Fahad", "Nayem Siddik", etc.
+  assignedByUsername: string;
+  
+  // Associated Cable (Optional)
+  cableTag?: string; // e.g. "PCC1W01*"
+  cableId?: string; // e.g. "LV-001"
+  section?: string; // e.g. "PCC (Power Control Center)"
+  scheduleType?: string;
+  
+  // Timestamps & Deadlines
+  createdAt: string;
+  dueDate?: string;
+  completedAt?: string;
+  
+  // Progress notes & Completion Remarks
+  notes?: string;
+  completionRemarks?: string;
+}
+
 export type CableStageStatus = 
   | 'Complete By VEL' 
   | 'Complete By Bargen' 
@@ -41,6 +92,10 @@ export interface CableEntry {
   voltage: string;
   drawingUrl?: string;
   notes?: string;
+
+  // Work Assignment link
+  assignedTo?: string; // e.g. "Nayem Siddik", "Mossadek Hossain"
+  assignedWorkId?: string; // link to WorkAssignment.id
 
   // Phase 1: Cable Laying
   cableLayingStatus: CableLayingStatus;

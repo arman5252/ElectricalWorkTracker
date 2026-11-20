@@ -9,7 +9,9 @@ import {
   ShieldCheck,
   Lock,
   Database,
-  Upload
+  Upload,
+  UserCheck,
+  ClipboardList
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -22,11 +24,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
     activeView, 
     setActiveView, 
     cables, 
+    workAssignments,
+    openAssignWorkModal,
     currentUser,
     setIsLoginModalOpen,
     setIsImportModalOpen,
     logout
   } = useApp();
+
+  const pendingTasksCount = workAssignments.filter(a => a.status !== 'Completed').length;
 
   return (
     <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-6 py-2.5 shadow-lg">
@@ -78,6 +84,26 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
             <span>Schedule ({cables.length})</span>
           </button>
 
+          {/* Work Assignments Tab */}
+          <button
+            onClick={() => setActiveView('assignments')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all shrink-0 ${
+              activeView === 'assignments'
+                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20 font-bold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>Work Tasks</span>
+            {pendingTasksCount > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                activeView === 'assignments' ? 'bg-slate-950/20 text-slate-950' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              }`}>
+                {pendingTasksCount}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveView('analytics')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all shrink-0 ${
@@ -117,6 +143,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
 
         {/* Settings & Auth */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Quick Assign Work Button */}
+          <button
+            onClick={() => openAssignWorkModal()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md shadow-amber-500/20 active:scale-95"
+            title="Assign new work to another staff member"
+          >
+            <UserCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span className="hidden sm:inline">Assign Work</span>
+          </button>
+
           {/* Import Data button - Admin Profile Only */}
           {currentUser?.role === 'admin' && (
             <button

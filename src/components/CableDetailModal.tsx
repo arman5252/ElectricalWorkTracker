@@ -11,7 +11,9 @@ import {
   Check,
   Lock,
   LogIn,
-  MessageSquare
+  MessageSquare,
+  UserCheck,
+  AlertCircle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { CableEntry, CableLayingStatus, CommissioningStatus } from '../types';
@@ -22,6 +24,8 @@ export const CableDetailModal: React.FC = () => {
     selectedCable, 
     setSelectedCable, 
     updateCable, 
+    workAssignments,
+    openAssignWorkModal,
     isSyncing,
     currentUser,
     canEdit,
@@ -53,6 +57,10 @@ export const CableDetailModal: React.FC = () => {
   const [notes, setNotes] = useState<string>(selectedCable.notes || '');
   const [drawingUrl, setDrawingUrl] = useState<string>(selectedCable.drawingUrl || '');
   const [isUploading, setIsUploading] = useState(false);
+
+  const linkedAssignment = workAssignments.find(
+    a => (a.cableTag && a.cableTag === selectedCable.cableTag) || (a.cableId && a.cableId === selectedCable.id)
+  );
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,6 +285,59 @@ export const CableDetailModal: React.FC = () => {
                 </select>
               </div>
             </div>
+          </div>
+
+          {/* Staff Work Assignment Section */}
+          <div className="p-4 bg-slate-950/70 border border-slate-800 rounded-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wide">
+                <UserCheck className="w-4 h-4 text-amber-400" />
+                <span>Staff Work Assignment</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => openAssignWorkModal(selectedCable)}
+                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 transition-all shadow-sm active:scale-95"
+              >
+                <UserCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>{linkedAssignment ? 'Reassign / Edit Work' : 'Assign to Staff'}</span>
+              </button>
+            </div>
+
+            {linkedAssignment ? (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-xs">{linkedAssignment.title}</span>
+                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">
+                      {linkedAssignment.priority}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                    {linkedAssignment.status}
+                  </span>
+                </div>
+                <p className="text-slate-300 text-xs">{linkedAssignment.description}</p>
+                <div className="flex items-center justify-between text-[10.5px] text-slate-400 pt-1 border-t border-slate-800/80">
+                  <span>Assigned to: <strong className="text-white">{linkedAssignment.assignedToName}</strong></span>
+                  <span>By: {linkedAssignment.assignedByName} • Due: {linkedAssignment.dueDate || 'N/A'}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-400">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span>No staff member is currently assigned to this cable.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openAssignWorkModal(selectedCable)}
+                  className="text-amber-400 hover:underline font-semibold text-xs"
+                >
+                  Assign Now &rarr;
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Engineering Sign-Offs & Individual Notes */}

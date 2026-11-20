@@ -6,14 +6,25 @@ import { ScheduleView } from './components/ScheduleView';
 import { VisualChartsView } from './components/VisualChartsView';
 import { BoqView } from './components/BoqView';
 import { SpecsView } from './components/SpecsView';
+import { WorkAssignmentsView } from './components/WorkAssignmentsView';
 import { CableDetailModal } from './components/CableDetailModal';
+import { AssignWorkModal } from './components/AssignWorkModal';
 import { GoogleSyncModal } from './components/GoogleSyncModal';
 import { DataImportModal } from './components/DataImportModal';
 import { LoginModal } from './components/LoginModal';
 import { ToastContainer } from './components/ToastContainer';
 
 export const App: React.FC = () => {
-  const { activeView, isLoginModalOpen, setIsLoginModalOpen, isImportModalOpen, setIsImportModalOpen, currentUser } = useApp();
+  const { 
+    activeView, 
+    isLoginModalOpen, 
+    setIsLoginModalOpen, 
+    isImportModalOpen, 
+    setIsImportModalOpen, 
+    isAssignModalOpen,
+    setIsAssignModalOpen,
+    currentUser 
+  } = useApp();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
@@ -28,6 +39,7 @@ export const App: React.FC = () => {
 
         {/* Dynamic View */}
         {activeView === 'schedule' && <ScheduleView />}
+        {activeView === 'assignments' && <WorkAssignmentsView />}
         {activeView === 'analytics' && <VisualChartsView />}
         {activeView === 'boq' && <BoqView />}
         {activeView === 'specs' && <SpecsView />}
@@ -35,6 +47,12 @@ export const App: React.FC = () => {
 
       {/* Cable Details Drawer / Inspection Modal */}
       <CableDetailModal />
+
+      {/* Work Assignment Modal - Assign Work to Staff */}
+      <AssignWorkModal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+      />
 
       {/* Google Spreadsheet & Drive Cloud Integration Modal - Admin Profile Only */}
       {currentUser?.role === 'admin' && (

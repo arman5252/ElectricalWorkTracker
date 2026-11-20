@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { CableEntry, CableLayingStatus, CommissioningStatus, BoqItem, ProjectSettings, AppUser } from '../types';
+import { 
+  CableEntry, 
+  CableLayingStatus, 
+  CommissioningStatus, 
+  BoqItem, 
+  ProjectSettings, 
+  AppUser,
+  WorkAssignment,
+  STAFF_MEMBERS
+} from '../types';
 import { AUTH_STORAGE_KEY, canEditSchedule, canSignApproval } from '../services/authService';
 import { initialCables, boqSummary, projectMeta } from '../data/cableData';
 import { 
@@ -8,12 +17,76 @@ import {
   updateCableInSupabase, 
   bulkSeedCablesToSupabase,
   mapDbRowToCableEntry,
-  sortCablesInOrder
+  sortCablesInOrder,
+  fetchWorkAssignmentsFromSupabase,
+  saveWorkAssignmentsToSupabase,
+  WORK_ASSIGNMENTS_RECORD_ID
 } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = 'volttrack_cables_schedule_state_v4_uploaded';
 const SETTINGS_KEY = 'volttrack_settings_state_v3';
+const ASSIGNMENTS_STORAGE_KEY = 'volttrack_work_assignments_v1';
+
+export const INITIAL_WORK_ASSIGNMENTS: WorkAssignment[] = [
+  {
+    id: 'WRK-2026-001',
+    title: 'Pre-Commissioning Megger Test on Trafo Feeder PCC1W01*',
+    description: 'Perform 2.5kV insulation resistance (megger) test between phases and earth before connection to Auxiliary Transformer 1. Record all readings in log.',
+    taskType: 'Insulation & Megger Test',
+    priority: 'High',
+    status: 'In Progress',
+    assignedToName: 'Nayem Siddik',
+    assignedToUsername: 'Nayem',
+    assignedByName: 'Md Fahad (Manager PP)',
+    assignedByUsername: 'Fahad',
+    cableTag: 'PCC1W01*',
+    cableId: 'LV-001',
+    section: 'PCC (Power Control Center)',
+    scheduleType: 'LV Power Cable Schedule',
+    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    notes: 'Safety clearance obtained. Trafo secondary isolated.'
+  },
+  {
+    id: 'WRK-2026-002',
+    title: 'Inspect Generator Junction Box Cable Clamping',
+    description: 'Verify 4C x 2.5 2XWY cable gland tight seal and wire ferrules numbering at Generator Junction Box for G1W01.',
+    taskType: 'Glanding & Termination',
+    priority: 'Urgent',
+    status: 'Assigned',
+    assignedToName: 'Mossadek Hossain',
+    assignedToUsername: 'Mossadek',
+    assignedByName: 'Md Fahad (Manager PP)',
+    assignedByUsername: 'Fahad',
+    cableTag: 'G1W01',
+    cableId: 'CTRL-001',
+    section: 'GENERATOR CONTROL CABINET GCC-1',
+    scheduleType: 'Control Cable Schedule',
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    dueDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]
+  },
+  {
+    id: 'WRK-2026-003',
+    title: 'Final Commissioning Check for EMCC-1 Incomer',
+    description: 'Verify 3.5C x 240 YFY voltage drop and phase sequencing before energization of PCC1W03.',
+    taskType: 'Commissioning',
+    priority: 'High',
+    status: 'Completed',
+    assignedToName: 'Md Fahad',
+    assignedToUsername: 'Fahad',
+    assignedByName: 'Nayem Siddik (Sr. Engr)',
+    assignedByUsername: 'Nayem',
+    cableTag: 'PCC1W03',
+    cableId: 'LV-003',
+    section: 'PCC (Power Control Center)',
+    scheduleType: 'LV Power Cable Schedule',
+    createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
+    completedAt: new Date(Date.now() - 86400000).toISOString(),
+    dueDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+    completionRemarks: 'Phase rotation verified L1-L2-L3 clockwise. Ready for full energization.'
+  }
+];
 
 interface Toast {
   id: string;
@@ -25,10 +98,21 @@ interface AppContextType {
   cables: CableEntry[];
   boq: BoqItem[];
   settings: ProjectSettings;
-  activeView: 'schedule' | 'boq' | 'analytics' | 'specs';
-  setActiveView: (view: 'schedule' | 'boq' | 'analytics' | 'specs') => void;
+  activeView: 'schedule' | 'assignments' | 'boq' | 'analytics' | 'specs';
+  setActiveView: (view: 'schedule' | 'assignments' | 'boq' | 'analytics' | 'specs') => void;
   selectedCable: CableEntry | null;
   setSelectedCable: (cable: CableEntry | null) => void;
+
+  // Work Assignments
+  workAssignments: WorkAssignment[];
+  isAssignModalOpen: boolean;
+  setIsAssignModalOpen: (open: boolean) => void;
+  preselectedCableForAssignment: CableEntry | null;
+  setPreselectedCableForAssignment: (cable: CableEntry | null) => void;
+  openAssignWorkModal: (cable?: CableEntry | null) => void;
+  createWorkAssignment: (data: Omit<WorkAssignment, 'id' | 'createdAt'>) => Promise<WorkAssignment>;
+  updateWorkAssignment: (id: string, updates: Partial<WorkAssignment>) => Promise<boolean>;
+  deleteWorkAssignment: (id: string) => Promise<boolean>;
   
   // Authentication & Permissions
   currentUser: AppUser | null;
@@ -132,8 +216,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   });
 
-  const [activeView, setActiveView] = useState<'schedule' | 'boq' | 'analytics' | 'specs'>('schedule');
+  const [activeView, setActiveView] = useState<'schedule' | 'assignments' | 'boq' | 'analytics' | 'specs'>('schedule');
   const [selectedCable, setSelectedCable] = useState<CableEntry | null>(null);
+
+  // Work Assignments State
+  const [workAssignments, setWorkAssignments] = useState<WorkAssignment[]>(() => {
+    try {
+      const saved = localStorage.getItem(ASSIGNMENTS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return INITIAL_WORK_ASSIGNMENTS;
+  });
+
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [preselectedCableForAssignment, setPreselectedCableForAssignment] = useState<CableEntry | null>(null);
+
+  const openAssignWorkModal = (cable?: CableEntry | null) => {
+    setPreselectedCableForAssignment(cable || null);
+    setIsAssignModalOpen(true);
+  };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(workAssignments));
+    } catch (e) {}
+  }, [workAssignments]);
 
   // Authentication state (Default is public Viewer)
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
@@ -252,12 +362,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDbStatus('standby');
     });
 
+    // 1b. Fetch Work Assignments from Supabase
+    fetchWorkAssignmentsFromSupabase().then(dbAssignments => {
+      if (dbAssignments && Array.isArray(dbAssignments) && dbAssignments.length > 0) {
+        setWorkAssignments(dbAssignments);
+        try {
+          localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(dbAssignments));
+        } catch (e) {}
+        console.log(`[Supabase DB] Loaded ${dbAssignments.length} work assignments`);
+      }
+    }).catch(err => console.warn('[Supabase Work Assignments Load Warning]:', err));
+
     // 2. Real-Time WebSocket Channel for instant sync across all users
     try {
       const channel = client
         .channel('cables-realtime-sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'cables' }, (payload) => {
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            // Check if it's work assignments record
+            if (payload.new && payload.new.id === WORK_ASSIGNMENTS_RECORD_ID && payload.new.description) {
+              try {
+                const parsed = JSON.parse(payload.new.description);
+                if (Array.isArray(parsed)) {
+                  setWorkAssignments(parsed);
+                  localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(parsed));
+                }
+              } catch (e) {}
+              return;
+            }
+
             const updated = mapDbRowToCableEntry(payload.new);
             setCables(prev => {
               const exists = prev.some(c => c.id === updated.id || c.cableTag === updated.cableTag);
@@ -624,6 +757,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Settings updated', 'success');
   };
 
+  const createWorkAssignment = async (data: Omit<WorkAssignment, 'id' | 'createdAt'>): Promise<WorkAssignment> => {
+    const id = `WRK-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+    const newAssignment: WorkAssignment = {
+      ...data,
+      id,
+      createdAt: new Date().toISOString()
+    };
+
+    const nextAssignments = [newAssignment, ...workAssignments];
+    setWorkAssignments(nextAssignments);
+    try {
+      localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(nextAssignments));
+    } catch (e) {}
+
+    // Link with cable in schedule if specified
+    if (data.cableId || data.cableTag) {
+      setCables(prev => prev.map(c => {
+        if ((data.cableId && c.id === data.cableId) || (data.cableTag && c.cableTag === data.cableTag)) {
+          return { ...c, assignedTo: data.assignedToName, assignedWorkId: id };
+        }
+        return c;
+      }));
+    }
+
+    saveWorkAssignmentsToSupabase(nextAssignments).catch(err => {
+      console.warn('Failed to sync assignments to Supabase:', err);
+    });
+
+    showToast(`Work "${data.title}" assigned to ${data.assignedToName} successfully!`, 'success');
+    return newAssignment;
+  };
+
+  const updateWorkAssignment = async (id: string, updates: Partial<WorkAssignment>): Promise<boolean> => {
+    const nextAssignments = workAssignments.map(a => a.id === id ? { ...a, ...updates } : a);
+    setWorkAssignments(nextAssignments);
+    try {
+      localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(nextAssignments));
+    } catch (e) {}
+
+    // If reassigning, update cable's assignedTo
+    if (updates.assignedToName) {
+      const assignment = workAssignments.find(a => a.id === id);
+      if (assignment?.cableTag || assignment?.cableId) {
+        setCables(prev => prev.map(c => {
+          if ((assignment.cableId && c.id === assignment.cableId) || (assignment.cableTag && c.cableTag === assignment.cableTag)) {
+            return { ...c, assignedTo: updates.assignedToName };
+          }
+          return c;
+        }));
+      }
+    }
+
+    saveWorkAssignmentsToSupabase(nextAssignments).catch(e => console.warn(e));
+    showToast('Work assignment updated successfully!', 'success');
+    return true;
+  };
+
+  const deleteWorkAssignment = async (id: string): Promise<boolean> => {
+    const assignment = workAssignments.find(a => a.id === id);
+    const nextAssignments = workAssignments.filter(a => a.id !== id);
+    setWorkAssignments(nextAssignments);
+    try {
+      localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(nextAssignments));
+    } catch (e) {}
+
+    if (assignment?.cableTag || assignment?.cableId) {
+      setCables(prev => prev.map(c => {
+        if ((assignment.cableId && c.id === assignment.cableId) || (assignment.cableTag && c.cableTag === assignment.cableTag)) {
+          return { ...c, assignedTo: undefined, assignedWorkId: undefined };
+        }
+        return c;
+      }));
+    }
+
+    saveWorkAssignmentsToSupabase(nextAssignments).catch(e => console.warn(e));
+    showToast('Work assignment removed', 'info');
+    return true;
+  };
+
   return (
     <AppContext.Provider value={{
       cables,
@@ -633,6 +845,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveView,
       selectedCable,
       setSelectedCable,
+      workAssignments,
+      isAssignModalOpen,
+      setIsAssignModalOpen,
+      preselectedCableForAssignment,
+      setPreselectedCableForAssignment,
+      openAssignWorkModal,
+      createWorkAssignment,
+      updateWorkAssignment,
+      deleteWorkAssignment,
       currentUser,
       isLoginModalOpen,
       setIsLoginModalOpen,

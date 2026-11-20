@@ -145,6 +145,8 @@ export const ScheduleView: React.FC = () => {
     updateApprovers,
     updateCable,
     setSelectedCable,
+    workAssignments,
+    openAssignWorkModal,
     downloadExcelFile,
     lastExcelSaveTime,
     importSpreadsheetData,
@@ -160,6 +162,7 @@ export const ScheduleView: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(100);
+  const [assignedStaffFilter, setAssignedStaffFilter] = useState('All');
 
   // Approval Sign-off Dialog with Note Option before approval
   interface ApprovalDialogState {
@@ -259,6 +262,17 @@ export const ScheduleView: React.FC = () => {
         if ((approverFilter === 'Naim Bhai' || approverFilter === 'Nayem Siddik (Sr. Engr)') && !cable.approvedBy1) return false;
       }
 
+      // Assigned Staff Filter
+      if (assignedStaffFilter !== 'All') {
+        const assignment = workAssignments.find(a => (a.cableTag && a.cableTag === cable.cableTag) || (a.cableId && a.cableId === cable.id));
+        if (assignedStaffFilter === 'unassigned') {
+          if (assignment || cable.assignedTo) return false;
+        } else {
+          const target = (assignment?.assignedToUsername || assignment?.assignedToName || cable.assignedTo || '').toLowerCase();
+          if (!target.includes(assignedStaffFilter.toLowerCase())) return false;
+        }
+      }
+
       // Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -286,6 +300,8 @@ export const ScheduleView: React.FC = () => {
     preCommissioningFilter,
     commissioningFilter,
     approverFilter,
+    assignedStaffFilter,
+    workAssignments,
     searchQuery
   ]);
 
@@ -300,6 +316,7 @@ export const ScheduleView: React.FC = () => {
     preCommissioningFilter !== 'All',
     commissioningFilter !== 'All',
     approverFilter !== 'All',
+    assignedStaffFilter !== 'All',
     Boolean(searchQuery.trim())
   ].filter(Boolean).length;
 
@@ -507,6 +524,16 @@ export const ScheduleView: React.FC = () => {
               </span>
             )}
 
+            {/* Quick Assign Work Button */}
+            <button
+              onClick={() => openAssignWorkModal()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black rounded-xl text-xs transition-all active:scale-95 shadow-md shadow-amber-500/20"
+              title="Assign electrical work on cables to another staff member"
+            >
+              <UserCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span className="hidden sm:inline">Assign Work</span>
+            </button>
+
             {/* Direct Excel Download button - Visible ONLY for logged-in profiles: Admin, Nayem, Mossadek, Fahad */}
             {currentUser && (
               <button
@@ -583,7 +610,7 @@ export const ScheduleView: React.FC = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-xs">
             {/* Section */}
             <div>
               <select
@@ -697,6 +724,21 @@ export const ScheduleView: React.FC = () => {
                 <option value="Md Fahad (Manager PP)">Approved: Md Fahad (Manager PP)</option>
                 <option value="Mossadek Hossain (Sr. Engr)">Verified: Mossadek Hossain (Sr. Engr)</option>
                 <option value="Nayem Siddik (Sr. Engr)">Checked: Nayem Siddik (Sr. Engr)</option>
+              </select>
+            </div>
+
+            {/* Assigned Staff Filter */}
+            <div>
+              <select
+                value={assignedStaffFilter}
+                onChange={e => { setAssignedStaffFilter(e.target.value); setCurrentPage(1); }}
+                className="w-full py-1.5 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-amber-400 truncate"
+              >
+                <option value="All">Assigned: All Staff</option>
+                <option value="Nayem">Assigned: Nayem Siddik</option>
+                <option value="Mossadek">Assigned: Mossadek Hossain</option>
+                <option value="Fahad">Assigned: Md Fahad</option>
+                <option value="unassigned">Unassigned Cables</option>
               </select>
             </div>
           </div>
@@ -841,13 +883,30 @@ export const ScheduleView: React.FC = () => {
 
                       {/* Cable Tag */}
                       <td className="py-2 px-3 border-r border-slate-800/40">
-                        <span 
-                          onClick={() => setSelectedCable(cable)}
-                          className="font-mono font-bold text-amber-300 hover:text-amber-200 cursor-pointer bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-xs inline-block truncate max-w-full"
-                          title="Click to inspect cable details & individual staff notes"
-                        >
-                          {cable.cableTag}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span 
+                            onClick={() => setSelectedCable(cable)}
+                            className="font-mono font-bold text-amber-300 hover:text-amber-200 cursor-pointer bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-xs inline-block truncate max-w-full"
+                            title="Click to inspect cable details & individual staff notes"
+                          >
+                            {cable.cableTag}
+                          </span>
+                          {(() => {
+                            const assignment = workAssignments.find(a => (a.cableTag && a.cableTag === cable.cableTag) || (a.cableId && a.cableId === cable.id));
+                            if (assignment) {
+                              return (
+                                <span 
+                                  onClick={() => setSelectedCable(cable)}
+                                  className="px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[9px] font-bold cursor-pointer hover:bg-amber-500/25 shrink-0"
+                                  title={`Assigned to ${assignment.assignedToName}: ${assignment.title} (${assignment.status})`}
+                                >
+                                  👤 {assignment.assignedToName.split(' ')[0]}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
                         <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate" title={`${cable.cableSize} (${cable.cableType})`}>
                           {cable.cableSize} ({cable.cableType})
                         </div>
