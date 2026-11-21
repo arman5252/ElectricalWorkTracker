@@ -49,7 +49,7 @@ export const SpecsView: React.FC = () => {
       </div>
 
       {/* Revision History */}
-      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+      <div className="glass-card rounded-2xl overflow-hidden shadow-lg">
         <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
           <div className="font-bold text-sm text-white flex items-center gap-2">
             <History className="w-4 h-4 text-amber-400" />
@@ -85,7 +85,7 @@ export const SpecsView: React.FC = () => {
       </div>
 
       {/* Installation Specifications */}
-      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+      <div className="glass-card rounded-2xl p-5 shadow-lg space-y-4">
         <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
           <ShieldCheck className="w-5 h-5 text-emerald-400" />
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">

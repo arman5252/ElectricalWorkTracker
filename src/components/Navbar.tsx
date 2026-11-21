@@ -38,7 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
   const pendingTasksCount = workAssignments.filter(a => a.status !== 'Completed').length;
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-6 py-2.5 shadow-lg">
+    <header className="sticky top-0 z-30 glass-panel border-b border-slate-800/80 px-4 lg:px-6 py-2.5 shadow-xl">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 max-w-[1920px] mx-auto w-full">
         
         {/* Brand & Supabase DB Indicator */}

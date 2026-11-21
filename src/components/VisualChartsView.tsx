@@ -13,6 +13,7 @@ import {
   Legend 
 } from 'recharts';
 import { useApp } from '../context/AppContext';
+import { normalizeStatus } from './ScheduleView';
 import { 
   BarChart3, 
   Zap, 
@@ -23,28 +24,51 @@ import {
   ShieldCheck,
   TrendingUp,
   Clock,
-  UserCheck
+  UserCheck,
+  ArrowRight
 } from 'lucide-react';
 
 export const VisualChartsView: React.FC = () => {
-  const { cables, setActiveView, setCableLayingFilter, setPreCommissioningFilter, setCommissioningFilter, setApproverFilter } = useApp();
+  const { 
+    cables, 
+    setActiveView, 
+    setCableLayingFilter, 
+    setPreCommissioningFilter, 
+    setCommissioningFilter, 
+    setApproverFilter 
+  } = useApp();
 
-  const total = cables.length;
+  const total = cables.length || 1;
 
-  // 1. Stage 1: Cable Laying counts
-  const velComplete = cables.filter(c => c.cableLayingStatus === 'Complete By VEL').length;
-  const velProgress = cables.filter(c => c.cableLayingStatus === 'Progress').length;
-  const velPending = cables.filter(c => c.cableLayingStatus === 'Pending').length;
+  // 1. Stage 1: Cable Laying counts (normalized, including both VEL and Bargen completions)
+  const layingVel = cables.filter(c => normalizeStatus(c.cableLayingStatus) === 'Complete By VEL').length;
+  const layingBargen = cables.filter(c => normalizeStatus(c.cableLayingStatus) === 'Complete By Bargen').length;
+  const layingDone = layingVel + layingBargen;
+  const layingProgress = cables.filter(c => normalizeStatus(c.cableLayingStatus) === 'Progress').length;
+  const layingPending = cables.filter(c => {
+    const s = normalizeStatus(c.cableLayingStatus);
+    return s === 'Pending' || !s;
+  }).length;
 
-  // 2. Stage 2: Pre-Commissioning counts
-  const preComplete = cables.filter(c => c.preCommissioningStatus === 'Complete By Bargen').length;
-  const preProgress = cables.filter(c => c.preCommissioningStatus === 'Progress').length;
-  const prePending = cables.filter(c => c.preCommissioningStatus === 'Pending').length;
+  // 2. Stage 2: Pre-Commissioning counts (normalized, including Bargen and VEL)
+  const preBargen = cables.filter(c => normalizeStatus(c.preCommissioningStatus) === 'Complete By Bargen').length;
+  const preVel = cables.filter(c => normalizeStatus(c.preCommissioningStatus) === 'Complete By VEL').length;
+  const preDone = preBargen + preVel;
+  const preProgress = cables.filter(c => normalizeStatus(c.preCommissioningStatus) === 'Progress').length;
+  const prePending = cables.filter(c => {
+    const s = normalizeStatus(c.preCommissioningStatus);
+    return s === 'Pending' || !s;
+  }).length;
 
-  // 3. Stage 3: Commissioning counts
-  const commComplete = cables.filter(c => c.commissioningStatus === 'Complete By Bargen').length;
-  const commProgress = cables.filter(c => c.commissioningStatus === 'Progress').length;
-  const commPending = cables.filter(c => c.commissioningStatus === 'Pending').length;
+  // 3. Stage 3: Commissioning counts (normalized, including Bargen and VEL)
+  const commBargen = cables.filter(c => normalizeStatus(c.commissioningStatus) === 'Complete By Bargen').length;
+  const commVel = cables.filter(c => normalizeStatus(c.commissioningStatus) === 'Complete By VEL').length;
+  const commDone = commBargen + commVel;
+  const commProgress = cables.filter(c => normalizeStatus(c.commissioningStatus) === 'Progress').length;
+  const commPending = cables.filter(c => {
+    const s = normalizeStatus(c.commissioningStatus);
+    return s === 'Pending' || !s;
+  }).length;
 
   // 4. Multi-level Approvals
   const naimSign = cables.filter(c => Boolean(c.approvedBy1)).length;
@@ -55,19 +79,19 @@ export const VisualChartsView: React.FC = () => {
   const stagesComparisonData = [
     {
       stage: 'Cable Laying',
-      complete: velComplete,
-      progress: velProgress,
-      pending: velPending,
+      complete: layingDone,
+      progress: layingProgress,
+      pending: layingPending,
     },
     {
       stage: 'Pre-Commissioning',
-      complete: preComplete,
+      complete: preDone,
       progress: preProgress,
       pending: prePending,
     },
     {
       stage: 'Commissioning',
-      complete: commComplete,
+      complete: commDone,
       progress: commProgress,
       pending: commPending,
     }
@@ -75,23 +99,24 @@ export const VisualChartsView: React.FC = () => {
 
   // Cable Laying Donut Data
   const layingPieData = [
-    { name: 'Complete By VEL', value: velComplete, color: '#10b981' },
-    { name: 'Progress', value: velProgress, color: '#86efac' },
-    { name: 'Pending', value: velPending, color: '#991b1b' },
+    { name: 'Complete By VEL', value: layingVel, color: '#10b981' },
+    { name: 'Complete By Bargen', value: layingBargen, color: '#14b8a6' },
+    { name: 'Progress', value: layingProgress, color: '#0ea5e9' },
+    { name: 'Pending', value: layingPending, color: '#f43f5e' },
   ];
 
   // Commissioning Donut Data
   const commPieData = [
-    { name: 'Complete By Bargen', value: commComplete, color: '#047857' },
-    { name: 'Progress', value: commProgress, color: '#86efac' },
-    { name: 'Pending', value: commPending, color: '#991b1b' },
+    { name: 'Complete (Bargen/VEL)', value: commDone, color: '#10b981' },
+    { name: 'Progress', value: commProgress, color: '#0ea5e9' },
+    { name: 'Pending', value: commPending, color: '#f43f5e' },
   ];
 
   // Approver Sign-off Bar Data
   const approverData = [
-    { name: 'Nayem Siddik (Sr. Engr)', signed: naimSign, remaining: total - naimSign },
-    { name: 'Mossadek Hossain (Sr. Engr)', signed: mosaddikSign, remaining: total - mosaddikSign },
-    { name: 'Md Fahad (Manager PP)', signed: fahadSign, remaining: total - fahadSign },
+    { name: 'Nayem Siddik (Sr. Engr)', signed: naimSign, remaining: Math.max(0, total - naimSign) },
+    { name: 'Mossadek Hossain (Sr. Engr)', signed: mosaddikSign, remaining: Math.max(0, total - mosaddikSign) },
+    { name: 'Md Fahad (Manager PP)', signed: fahadSign, remaining: Math.max(0, total - fahadSign) },
   ];
 
   // Top Conductor Sizes
@@ -128,101 +153,101 @@ export const VisualChartsView: React.FC = () => {
       {/* 4 Summary Highlight Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
         
-        {/* Card 1: Cable Laying VEL */}
+        {/* Card 1: Cable Laying */}
         <div 
-          onClick={() => { setCableLayingFilter('Complete By VEL'); setActiveView('schedule'); }}
-          className="p-5 bg-gradient-to-br from-slate-900/90 to-slate-900/50 border border-slate-800 hover:border-emerald-500/50 rounded-2xl relative overflow-hidden shadow-lg cursor-pointer transition-all"
+          onClick={() => { setCableLayingFilter('Done'); setActiveView('schedule'); }}
+          className="p-5 glass-card hover:border-emerald-500/50 rounded-2xl relative overflow-hidden cursor-pointer transition-all group"
         >
-          <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl"></div>
+          <div className="absolute -right-4 -top-4 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="font-semibold text-slate-300">Cable Laying (VEL)</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#10b981] text-white">
-              Complete By VEL
+            <span className="font-bold text-slate-200">Cable Laying (Stage 1)</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              {layingDone} Done
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-emerald-400">
-            {velComplete} <span className="text-sm font-normal text-slate-400">/ {total}</span>
+          <div className="text-3xl font-black text-emerald-400">
+            {layingDone} <span className="text-sm font-normal text-slate-400">/ {total}</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
-            {Math.round((velComplete / total) * 100)}% laid on cable tray by VEL
+            <strong className="text-emerald-300">{Math.round((layingDone / total) * 100)}%</strong> laid ({layingVel} VEL, {layingBargen} Bargen)
           </p>
-          <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div className="w-full bg-slate-800/80 h-1.5 rounded-full mt-3 overflow-hidden">
             <div 
-              className="bg-[#10b981] h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.round((velComplete / total) * 100)}%` }}
+              className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((layingDone / total) * 100)}%` }}
             ></div>
           </div>
         </div>
 
-        {/* Card 2: Pre-Commissioning Bargen */}
+        {/* Card 2: Pre-Commissioning */}
         <div 
-          onClick={() => { setPreCommissioningFilter('Complete By Bargen'); setActiveView('schedule'); }}
-          className="p-5 bg-gradient-to-br from-slate-900/90 to-slate-900/50 border border-slate-800 hover:border-emerald-600/50 rounded-2xl relative overflow-hidden shadow-lg cursor-pointer transition-all"
+          onClick={() => { setPreCommissioningFilter('Done'); setActiveView('schedule'); }}
+          className="p-5 glass-card hover:border-teal-500/50 rounded-2xl relative overflow-hidden cursor-pointer transition-all group"
         >
-          <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-600/10 rounded-full blur-2xl"></div>
+          <div className="absolute -right-4 -top-4 w-28 h-28 bg-teal-500/10 rounded-full blur-2xl group-hover:bg-teal-500/20 transition-all"></div>
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="font-semibold text-slate-300">Pre-Commissioning</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#047857] text-white">
-              Complete By Bargen
+            <span className="font-bold text-slate-200">Pre-Commissioning (Stage 2)</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40">
+              {preDone} Done
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-emerald-300">
-            {preComplete} <span className="text-sm font-normal text-slate-400">/ {total}</span>
+          <div className="text-3xl font-black text-teal-300">
+            {preDone} <span className="text-sm font-normal text-slate-400">/ {total}</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
-            {Math.round((preComplete / total) * 100)}% Meggered & Cold tested OK
+            <strong className="text-teal-300">{Math.round((preDone / total) * 100)}%</strong> Meggered & Cold tested OK
           </p>
-          <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div className="w-full bg-slate-800/80 h-1.5 rounded-full mt-3 overflow-hidden">
             <div 
-              className="bg-[#047857] h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.round((preComplete / total) * 100)}%` }}
+              className="bg-teal-500 h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((preDone / total) * 100)}%` }}
             ></div>
           </div>
         </div>
 
-        {/* Card 3: Commissioning Bargen */}
+        {/* Card 3: Commissioning */}
         <div 
-          onClick={() => { setCommissioningFilter('Complete By Bargen'); setActiveView('schedule'); }}
-          className="p-5 bg-gradient-to-br from-slate-900/90 to-slate-900/50 border border-slate-800 hover:border-emerald-600/50 rounded-2xl relative overflow-hidden shadow-lg cursor-pointer transition-all"
+          onClick={() => { setCommissioningFilter('Done'); setActiveView('schedule'); }}
+          className="p-5 glass-card hover:border-cyan-500/50 rounded-2xl relative overflow-hidden cursor-pointer transition-all group"
         >
-          <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-600/10 rounded-full blur-2xl"></div>
+          <div className="absolute -right-4 -top-4 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all"></div>
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="font-semibold text-slate-300">Commissioning</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#047857] text-white">
-              Complete By Bargen
+            <span className="font-bold text-slate-200">Commissioning (Stage 3)</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+              {commDone} Done
             </span>
           </div>
-          <div className="text-3xl font-extrabold text-emerald-300">
-            {commComplete} <span className="text-sm font-normal text-slate-400">/ {total}</span>
+          <div className="text-3xl font-black text-cyan-300">
+            {commDone} <span className="text-sm font-normal text-slate-400">/ {total}</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
-            {Math.round((commComplete / total) * 100)}% Live energized & verified
+            <strong className="text-cyan-300">{Math.round((commDone / total) * 100)}%</strong> Live energized & verified
           </p>
-          <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div className="w-full bg-slate-800/80 h-1.5 rounded-full mt-3 overflow-hidden">
             <div 
-              className="bg-[#047857] h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.round((commComplete / total) * 100)}%` }}
+              className="bg-cyan-500 h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((commDone / total) * 100)}%` }}
             ></div>
           </div>
         </div>
 
-        {/* Card 4: Final Sign-off Fahad Sir */}
+        {/* Card 4: Final Sign-off Md Fahad */}
         <div 
-          onClick={() => { setApproverFilter('Fahad Sir'); setActiveView('schedule'); }}
-          className="p-5 bg-gradient-to-br from-slate-900/90 to-slate-900/50 border border-slate-800 hover:border-amber-500/50 rounded-2xl relative overflow-hidden shadow-lg cursor-pointer transition-all"
+          onClick={() => { setApproverFilter('Md Fahad (Manager PP)'); setActiveView('schedule'); }}
+          className="p-5 glass-card hover:border-amber-500/50 rounded-2xl relative overflow-hidden cursor-pointer transition-all group"
         >
-          <div className="absolute right-0 top-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl"></div>
+          <div className="absolute -right-4 -top-4 w-28 h-28 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all"></div>
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="font-semibold text-slate-300">Final Approval</span>
+            <span className="font-bold text-slate-200">Final Approval</span>
             <ShieldCheck className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-3xl font-extrabold text-amber-300">
+          <div className="text-3xl font-black text-amber-300">
             {fahadSign} <span className="text-sm font-normal text-slate-400">/ {total}</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
-            Signed off by Fahad Sir (Final Approver)
+            <strong className="text-amber-300">{Math.round((fahadSign / total) * 100)}%</strong> Approved by Md Fahad (Manager PP)
           </p>
-          <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div className="w-full bg-slate-800/80 h-1.5 rounded-full mt-3 overflow-hidden">
             <div 
               className="bg-amber-400 h-full rounded-full transition-all duration-500"
               style={{ width: `${Math.round((fahadSign / total) * 100)}%` }}
@@ -235,7 +260,7 @@ export const VisualChartsView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Stage Comparison Stacked Bar */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div className="glass-card rounded-2xl p-5 shadow-xl">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-400" />
@@ -263,15 +288,15 @@ export const VisualChartsView: React.FC = () => {
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                 <Bar dataKey="complete" name="Completed (VEL / Bargen)" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="progress" name="Progress" fill="#86efac" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="pending" name="Pending" fill="#991b1b" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="progress" name="Progress" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="pending" name="Pending" fill="#f43f5e" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* 3-Tier Approver Sign-offs */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div className="glass-card rounded-2xl p-5 shadow-xl">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <UserCheck className="w-4 h-4 text-amber-400" />
@@ -288,7 +313,7 @@ export const VisualChartsView: React.FC = () => {
               <BarChart data={approverData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis type="number" stroke="#94a3b8" fontSize={10} />
-                <YAxis type="category" dataKey="name" stroke="#94a3b8" fontSize={11} width={120} />
+                <YAxis type="category" dataKey="name" stroke="#94a3b8" fontSize={11} width={135} />
                 <Tooltip 
                   formatter={(val: any) => [`${val} Cables`, 'Count']}
                   contentStyle={{ 
@@ -311,7 +336,7 @@ export const VisualChartsView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Top Cable Sizes & Total Runs */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div className="glass-card rounded-2xl p-5 shadow-xl">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-amber-400" />
@@ -345,7 +370,7 @@ export const VisualChartsView: React.FC = () => {
         </div>
 
         {/* Cables by Panel / System Section */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div className="glass-card rounded-2xl p-5 shadow-xl">
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Layers className="w-4 h-4 text-sky-400" />

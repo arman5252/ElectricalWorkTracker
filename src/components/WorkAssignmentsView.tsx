@@ -108,7 +108,7 @@ export const WorkAssignmentsView: React.FC = () => {
   return (
     <div className="space-y-4 text-xs">
       {/* View Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-card p-4 rounded-2xl shadow-xl">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 font-black shadow-lg shadow-amber-500/20 ring-1 ring-amber-400/40 shrink-0">
             <UserCheck className="w-6 h-6 stroke-slate-950" />
@@ -143,7 +143,7 @@ export const WorkAssignmentsView: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Tasks */}
-        <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg">
+        <div className="p-3.5 rounded-2xl glass-card relative overflow-hidden group">
           <div className="flex items-center justify-between mb-1 text-slate-400">
             <span className="font-bold uppercase tracking-wider text-[10.5px]">Total Assignments</span>
             <Layers className="w-4 h-4 text-amber-400" />
@@ -153,7 +153,7 @@ export const WorkAssignmentsView: React.FC = () => {
         </div>
 
         {/* In Progress */}
-        <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg">
+        <div className="p-3.5 rounded-2xl glass-card relative overflow-hidden group border-emerald-500/30">
           <div className="flex items-center justify-between mb-1 text-emerald-300">
             <span className="font-bold uppercase tracking-wider text-[10.5px]">In Progress</span>
             <Clock className="w-4 h-4 text-emerald-400" />
@@ -163,7 +163,7 @@ export const WorkAssignmentsView: React.FC = () => {
         </div>
 
         {/* Assigned / Pending */}
-        <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg">
+        <div className="p-3.5 rounded-2xl glass-card relative overflow-hidden group border-cyan-500/30">
           <div className="flex items-center justify-between mb-1 text-cyan-300">
             <span className="font-bold uppercase tracking-wider text-[10.5px]">Assigned / To-Do</span>
             <UserCheck className="w-4 h-4 text-cyan-400" />
@@ -173,7 +173,7 @@ export const WorkAssignmentsView: React.FC = () => {
         </div>
 
         {/* Completed */}
-        <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg">
+        <div className="p-3.5 rounded-2xl glass-card relative overflow-hidden group border-emerald-500/40">
           <div className="flex items-center justify-between mb-1 text-emerald-400">
             <span className="font-bold uppercase tracking-wider text-[10.5px]">Completed</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -184,7 +184,7 @@ export const WorkAssignmentsView: React.FC = () => {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-xl space-y-3">
+      <div className="glass-card p-4 rounded-2xl shadow-xl space-y-3">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Search */}
           <div className="relative flex-1 max-w-md">
@@ -321,14 +321,14 @@ export const WorkAssignmentsView: React.FC = () => {
             return (
               <div
                 key={assignment.id}
-                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between shadow-lg relative ${
+                className={`p-4 rounded-2xl glass-card transition-all flex flex-col justify-between shadow-lg relative ${
                   isCompleted
-                    ? 'bg-slate-900/50 border-emerald-900/40 opacity-80 hover:opacity-100'
+                    ? 'border-emerald-500/30 opacity-80 hover:opacity-100'
                     : isUrgent
-                    ? 'bg-slate-900 border-rose-600/60 ring-1 ring-rose-500/30'
+                    ? 'border-rose-500/60 ring-1 ring-rose-500/30'
                     : isInProgress
-                    ? 'bg-slate-900 border-amber-500/50 ring-1 ring-amber-500/20'
-                    : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
+                    ? 'border-amber-500/50 ring-1 ring-amber-500/20'
+                    : 'hover:border-slate-600'
                 }`}
               >
                 <div>

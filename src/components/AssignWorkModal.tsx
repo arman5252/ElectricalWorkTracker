@@ -152,7 +152,7 @@ export const AssignWorkModal: React.FC<AssignWorkModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
       <div 
-        className="relative w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden my-6 transition-all"
+        className="relative w-full max-w-2xl glass-card rounded-2xl shadow-2xl overflow-hidden my-6 transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

@@ -44,22 +44,22 @@ export const getPillStyle = (status: string) => {
   const norm = normalizeStatus(status);
   switch (norm) {
     case 'Complete By VEL':
-      return 'bg-[#10b981] hover:bg-[#059669] text-white shadow-sm font-bold';
+      return 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 shadow-sm font-bold';
     case 'Complete By Bargen':
-      return 'bg-[#047857] hover:bg-[#065f46] text-white shadow-sm font-bold';
+      return 'bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 shadow-sm font-bold';
     case 'Progress':
-      return 'bg-[#dcfce7] hover:bg-[#bbf7d0] text-[#14532d] shadow-sm font-extrabold';
+      return 'bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 shadow-sm font-bold';
     case 'Scope of Bargen':
-      return 'bg-[#0891b2] hover:bg-[#0e7490] text-white shadow-sm font-bold';
+      return 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 shadow-sm font-bold';
     case 'Scope of VEL':
-      return 'bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-sm font-bold';
+      return 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 shadow-sm font-bold';
     case 'Out of Scope':
-      return 'bg-[#475569] hover:bg-[#334155] text-slate-100 shadow-sm font-medium';
+      return 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 border border-slate-700/60 shadow-sm font-medium';
     case 'N/A':
-      return 'bg-[#334155] hover:bg-[#1e293b] text-slate-300 shadow-sm font-medium';
+      return 'bg-slate-800/60 hover:bg-slate-750 text-slate-500 border border-slate-700/40 shadow-sm font-medium';
     case 'Pending':
     default:
-      return 'bg-[#991b1b] hover:bg-[#7f1d1d] text-white shadow-sm font-bold';
+      return 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 shadow-sm font-bold';
   }
 };
 
@@ -443,7 +443,7 @@ export const ScheduleView: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Top Search & Filter Bar */}
-      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-4 shadow-xl space-y-3.5">
+      <div className="glass-card rounded-2xl p-4 shadow-xl space-y-3.5">
         
         {/* Row 1: Search + Fast Schedule Tabs + Mode & Export */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
@@ -746,6 +746,73 @@ export const ScheduleView: React.FC = () => {
               </select>
             </div>
           </div>
+
+          {/* Active Filter Chips Bar */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-2.5 border-t border-slate-800/60 text-[11px]">
+              <span className="text-slate-400 font-semibold text-[10.5px]">Active:</span>
+              {searchQuery && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-medium">
+                  <span>Search: &quot;{searchQuery}&quot;</span>
+                  <button onClick={() => setSearchQuery('')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {sectionFilter !== 'All' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-200 font-medium">
+                  <span>Section: {sectionFilter}</span>
+                  <button onClick={() => setSectionFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {fromLocationFilter !== 'All' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-200 font-medium">
+                  <span>From: {fromLocationFilter}</span>
+                  <button onClick={() => setFromLocationFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {toLocationFilter !== 'All' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-200 font-medium">
+                  <span>To: {toLocationFilter}</span>
+                  <button onClick={() => setToLocationFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {cableLayingFilter !== 'All' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-medium">
+                  <span>Laying: {cableLayingFilter}</span>
+                  <button onClick={() => setCableLayingFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {preCommissioningFilter !== 'All' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-300 font-medium">
+                  <span>Pre-Comm: {preCommissioningFilter}</span>
+                  <button onClick={() => setPreCommissioningFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {commissioningFilter !== 'All' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-medium">
+                  <span>Comm: {commissioningFilter}</span>
+                  <button onClick={() => setCommissioningFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {approverFilter !== 'All' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-medium">
+                  <span>Approver: {approverFilter.split(' ')[0]}</span>
+                  <button onClick={() => setApproverFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {assignedStaffFilter !== 'All' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-medium">
+                  <span>Staff: {assignedStaffFilter}</span>
+                  <button onClick={() => setAssignedStaffFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              <button
+                onClick={resetAllFilters}
+                className="text-[10px] text-amber-400 hover:text-amber-300 underline font-semibold ml-1"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -813,25 +880,25 @@ export const ScheduleView: React.FC = () => {
                 <col style={{ width: '44px' }} />
               </colgroup>
 
-              {/* Top Tier Headers (Matching the navy blue group headers in spreadsheet) */}
+              {/* Top Tier Headers */}
               <thead>
-                <tr className="bg-[#0f2444] text-white border-b border-slate-800 text-[11px] font-bold sticky top-0 z-20">
-                  <th colSpan={4} className="py-2.5 px-3 border-r border-slate-800/80 bg-[#0f2444]">
+                <tr className="bg-slate-900 text-white border-b border-slate-800 text-[11px] font-bold sticky top-0 z-20 backdrop-blur-md">
+                  <th colSpan={4} className="py-2.5 px-3 border-r border-slate-800/80 bg-slate-900/95 text-slate-300 font-extrabold tracking-wider">
                     CABLE SPECIFICATION & ROUTING
                   </th>
-                  <th colSpan={1} className="py-2.5 px-3 text-center bg-[#13325c] border-r border-slate-800/80">
+                  <th colSpan={1} className="py-2.5 px-3 text-center bg-slate-900/95 text-emerald-400 font-extrabold border-r border-slate-800/80 tracking-wider">
                     Cable Laying
                   </th>
-                  <th colSpan={1} className="py-2.5 px-3 text-center bg-[#173d70] border-r border-slate-800/80">
+                  <th colSpan={1} className="py-2.5 px-3 text-center bg-slate-900/95 text-teal-400 font-extrabold border-r border-slate-800/80 tracking-wider">
                     Pre-Commissioning
                   </th>
-                  <th colSpan={1} className="py-2.5 px-3 text-center bg-[#13325c] border-r border-slate-800/80">
+                  <th colSpan={1} className="py-2.5 px-3 text-center bg-slate-900/95 text-cyan-400 font-extrabold border-r border-slate-800/80 tracking-wider">
                     Commissioning
                   </th>
-                  <th colSpan={3} className="py-2.5 px-3 text-center bg-[#0f2444] border-r border-slate-800/80">
+                  <th colSpan={3} className="py-2.5 px-3 text-center bg-slate-900/95 text-amber-400 font-extrabold border-r border-slate-800/80 tracking-wider">
                     Approve By
                   </th>
-                  <th className="py-2.5 px-1 text-center bg-[#0f2444]"></th>
+                  <th className="py-2.5 px-1 text-center bg-slate-900/95"></th>
                 </tr>
 
                 {/* Subheaders */}

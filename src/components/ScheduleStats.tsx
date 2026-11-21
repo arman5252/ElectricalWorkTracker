@@ -83,11 +83,9 @@ export const ScheduleStats: React.FC = () => {
   const approvedMosaddik = useMemo(() => scopedCables.filter(c => Boolean(c.approvedBy2)).length, [scopedCables]);
   const approvedFahad = useMemo(() => scopedCables.filter(c => Boolean(c.approvedBy3)).length, [scopedCables]);
 
-  const scopeLabel = scheduleTypeFilter === 'LV Power' 
-    ? 'LV Power Schedule' 
-    : scheduleTypeFilter === 'Control' 
-    ? 'Control Schedule' 
-    : 'All Schedules';
+  const naimPercent = total > 0 ? Math.round((approvedNaim / total) * 100) : 0;
+  const mosaddikPercent = total > 0 ? Math.round((approvedMosaddik / total) * 100) : 0;
+  const fahadPercent = total > 0 ? Math.round((approvedFahad / total) * 100) : 0;
 
   return (
     <div className="space-y-3">
@@ -99,12 +97,14 @@ export const ScheduleStats: React.FC = () => {
             setCableLayingFilter(cableLayingFilter === 'Done' ? 'All' : 'Done'); 
             setActiveView('schedule'); 
           }}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-lg ${
+          className={`p-4 rounded-2xl glass-card transition-all cursor-pointer relative overflow-hidden group ${
             cableLayingFilter !== 'All'
-              ? 'bg-slate-900 border-emerald-500 ring-1 ring-emerald-500/40'
-              : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+              ? 'border-emerald-500/80 ring-1 ring-emerald-500/40 glow-emerald'
+              : 'hover:border-emerald-500/40'
           }`}
         >
+          <div className="absolute -right-3 -top-3 w-20 h-20 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all pointer-events-none"></div>
+          
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
@@ -125,10 +125,10 @@ export const ScheduleStats: React.FC = () => {
                   setCableLayingFilter(e.target.value);
                   setActiveView('schedule');
                 }}
-                className={`appearance-none cursor-pointer py-0.5 pl-2.5 pr-6 rounded-full text-[10.5px] font-bold border transition-all shadow-sm focus:outline-none ${
+                className={`appearance-none cursor-pointer py-1 pl-2.5 pr-6 rounded-lg text-[10.5px] font-bold border transition-all focus:outline-none ${
                   cableLayingFilter !== 'All'
-                    ? 'bg-emerald-600 text-white border-emerald-400 ring-1 ring-emerald-400/50'
-                    : 'bg-[#10b981] hover:bg-[#059669] text-white border-emerald-500/50'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 ring-1 ring-emerald-500/30'
+                    : 'bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-700/80'
                 }`}
                 title="Filter schedule by Cable Laying status"
               >
@@ -136,34 +136,34 @@ export const ScheduleStats: React.FC = () => {
                 <option value="Done" className="bg-slate-900 text-emerald-400 font-bold">✓ Total Done ({layingDone})</option>
                 <option value="Complete By VEL" className="bg-slate-900 text-emerald-300">✓ Complete By VEL ({layingVel})</option>
                 <option value="Complete By Bargen" className="bg-slate-900 text-teal-300">✓ Complete By Bargen ({layingBargen})</option>
-                <option value="Progress" className="bg-slate-900 text-green-300">⏳ Progress ({layingProgress})</option>
+                <option value="Progress" className="bg-slate-900 text-sky-300">⏳ Progress ({layingProgress})</option>
                 <option value="Pending" className="bg-slate-900 text-rose-400">⏱ Pending ({layingPending})</option>
               </select>
-              <ChevronDown className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/90" />
+              <ChevronDown className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
             </div>
           </div>
 
           <div className="flex items-baseline justify-between mt-1">
-            <div className="text-2xl font-extrabold text-white">
+            <div className="text-2xl font-black text-white">
               {layingDone} <span className="text-xs font-normal text-slate-400">/ {total}</span>
             </div>
-            <span className="text-xs font-bold text-emerald-400 font-mono">{layingPercent}%</span>
+            <span className="text-xs font-black text-emerald-400 font-mono">{layingPercent}%</span>
           </div>
 
           {/* 3-Part Progress bar */}
-          <div className="w-full bg-slate-800 h-2 rounded-full mt-2.5 overflow-hidden flex">
+          <div className="w-full bg-slate-950/80 h-2 rounded-full mt-2.5 overflow-hidden flex border border-slate-800/80">
             <div 
-              className="bg-[#10b981] h-full transition-all duration-300" 
+              className="bg-emerald-500 h-full transition-all duration-300" 
               style={{ width: `${layingPercent}%` }} 
               title={`Total Done: ${layingDone} (${layingVel} VEL, ${layingBargen} Bargen)`}
             />
             <div 
-              className="bg-[#86efac] h-full transition-all duration-300" 
+              className="bg-sky-400 h-full transition-all duration-300" 
               style={{ width: `${layingProgressPercent}%` }} 
               title={`Progress: ${layingProgress}`}
             />
             <div 
-              className="bg-[#991b1b] h-full transition-all duration-300" 
+              className="bg-rose-500/70 h-full transition-all duration-300" 
               style={{ width: `${layingPendingPercent}%` }} 
               title={`Pending: ${layingPending}`}
             />
@@ -192,7 +192,7 @@ export const ScheduleStats: React.FC = () => {
                 setActiveView('schedule');
               }}
               className={`cursor-pointer transition-colors ${
-                cableLayingFilter === 'Progress' ? 'text-green-300 underline font-bold' : 'text-emerald-200/90 hover:text-white'
+                cableLayingFilter === 'Progress' ? 'text-sky-300 underline font-bold' : 'text-sky-400/90 hover:text-white'
               }`}
               title={`Click to view ${layingProgress} cables in progress`}
             >
@@ -206,7 +206,7 @@ export const ScheduleStats: React.FC = () => {
                 setActiveView('schedule');
               }}
               className={`font-semibold cursor-pointer transition-colors ${
-                cableLayingFilter === 'Pending' ? 'text-rose-300 underline font-bold' : 'text-rose-400 hover:text-rose-300'
+                cableLayingFilter === 'Pending' ? 'text-rose-300 underline font-bold' : 'text-rose-400/90 hover:text-rose-300'
               }`}
               title={`Click to view ${layingPending} pending cables`}
             >
@@ -221,12 +221,14 @@ export const ScheduleStats: React.FC = () => {
             setPreCommissioningFilter(preCommissioningFilter === 'Done' ? 'All' : 'Done'); 
             setActiveView('schedule'); 
           }}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-lg ${
+          className={`p-4 rounded-2xl glass-card transition-all cursor-pointer relative overflow-hidden group ${
             preCommissioningFilter !== 'All'
-              ? 'bg-slate-900 border-emerald-600 ring-1 ring-emerald-600/40'
-              : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+              ? 'border-teal-500/80 ring-1 ring-teal-500/40 glow-emerald'
+              : 'hover:border-teal-500/40'
           }`}
         >
+          <div className="absolute -right-3 -top-3 w-20 h-20 bg-teal-500/10 rounded-full blur-xl group-hover:bg-teal-500/20 transition-all pointer-events-none"></div>
+
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
@@ -247,45 +249,45 @@ export const ScheduleStats: React.FC = () => {
                   setPreCommissioningFilter(e.target.value);
                   setActiveView('schedule');
                 }}
-                className={`appearance-none cursor-pointer py-0.5 pl-2.5 pr-6 rounded-full text-[10.5px] font-bold border transition-all shadow-sm focus:outline-none ${
+                className={`appearance-none cursor-pointer py-1 pl-2.5 pr-6 rounded-lg text-[10.5px] font-bold border transition-all focus:outline-none ${
                   preCommissioningFilter !== 'All'
-                    ? 'bg-emerald-700 text-white border-emerald-500 ring-1 ring-emerald-500/50'
-                    : 'bg-[#047857] hover:bg-[#065f46] text-white border-emerald-600/50'
+                    ? 'bg-teal-500/20 text-teal-300 border-teal-500/50 ring-1 ring-teal-500/30'
+                    : 'bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-700/80'
                 }`}
                 title="Filter schedule by Pre-Commissioning status"
               >
                 <option value="All" className="bg-slate-900 text-slate-300">All Pre-Comm ({total})</option>
-                <option value="Done" className="bg-slate-900 text-emerald-400 font-bold">✓ Total Done ({preDone})</option>
-                <option value="Complete By Bargen" className="bg-slate-900 text-emerald-300">✓ Complete By Bargen ({preBargen})</option>
-                <option value="Complete By VEL" className="bg-slate-900 text-teal-300">✓ Complete By VEL ({preVel})</option>
-                <option value="Progress" className="bg-slate-900 text-green-300">⏳ Progress ({preProgress})</option>
+                <option value="Done" className="bg-slate-900 text-teal-400 font-bold">✓ Total Done ({preDone})</option>
+                <option value="Complete By Bargen" className="bg-slate-900 text-teal-300">✓ Complete By Bargen ({preBargen})</option>
+                <option value="Complete By VEL" className="bg-slate-900 text-emerald-300">✓ Complete By VEL ({preVel})</option>
+                <option value="Progress" className="bg-slate-900 text-sky-300">⏳ Progress ({preProgress})</option>
                 <option value="Pending" className="bg-slate-900 text-rose-400">⏱ Pending ({prePending})</option>
               </select>
-              <ChevronDown className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/90" />
+              <ChevronDown className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
             </div>
           </div>
 
           <div className="flex items-baseline justify-between mt-1">
-            <div className="text-2xl font-extrabold text-white">
+            <div className="text-2xl font-black text-white">
               {preDone} <span className="text-xs font-normal text-slate-400">/ {total}</span>
             </div>
-            <span className="text-xs font-bold text-emerald-400 font-mono">{prePercent}%</span>
+            <span className="text-xs font-black text-teal-400 font-mono">{prePercent}%</span>
           </div>
 
           {/* 3-Part Progress bar */}
-          <div className="w-full bg-slate-800 h-2 rounded-full mt-2.5 overflow-hidden flex">
+          <div className="w-full bg-slate-950/80 h-2 rounded-full mt-2.5 overflow-hidden flex border border-slate-800/80">
             <div 
-              className="bg-[#047857] h-full transition-all duration-300" 
+              className="bg-teal-500 h-full transition-all duration-300" 
               style={{ width: `${prePercent}%` }} 
               title={`Total Done: ${preDone} (${preBargen} Bargen, ${preVel} VEL)`}
             />
             <div 
-              className="bg-[#86efac] h-full transition-all duration-300" 
+              className="bg-sky-400 h-full transition-all duration-300" 
               style={{ width: `${preProgressPercent}%` }} 
               title={`Progress: ${preProgress}`}
             />
             <div 
-              className="bg-[#991b1b] h-full transition-all duration-300" 
+              className="bg-rose-500/70 h-full transition-all duration-300" 
               style={{ width: `${prePendingPercent}%` }} 
               title={`Pending: ${prePending}`}
             />
@@ -300,7 +302,7 @@ export const ScheduleStats: React.FC = () => {
                 setActiveView('schedule');
               }}
               className={`font-semibold cursor-pointer transition-colors ${
-                preCommissioningFilter === 'Done' ? 'text-emerald-300 underline font-bold' : 'text-emerald-400 hover:text-emerald-300'
+                preCommissioningFilter === 'Done' ? 'text-teal-300 underline font-bold' : 'text-teal-400 hover:text-teal-300'
               }`}
               title={`Click to view all ${preDone} completed cables (${preBargen} by Bargen, ${preVel} by VEL)`}
             >
@@ -314,7 +316,7 @@ export const ScheduleStats: React.FC = () => {
                 setActiveView('schedule');
               }}
               className={`cursor-pointer transition-colors ${
-                preCommissioningFilter === 'Progress' ? 'text-green-300 underline font-bold' : 'text-emerald-200/90 hover:text-white'
+                preCommissioningFilter === 'Progress' ? 'text-sky-300 underline font-bold' : 'text-sky-400/90 hover:text-white'
               }`}
               title={`Click to view ${preProgress} cables in progress`}
             >
@@ -328,7 +330,7 @@ export const ScheduleStats: React.FC = () => {
                 setActiveView('schedule');
               }}
               className={`font-semibold cursor-pointer transition-colors ${
-                preCommissioningFilter === 'Pending' ? 'text-rose-300 underline font-bold' : 'text-rose-400 hover:text-rose-300'
+                preCommissioningFilter === 'Pending' ? 'text-rose-300 underline font-bold' : 'text-rose-400/90 hover:text-rose-300'
               }`}
               title={`Click to view ${prePending} pending cables`}
             >
@@ -343,12 +345,14 @@ export const ScheduleStats: React.FC = () => {
             setCommissioningFilter(commissioningFilter === 'Done' ? 'All' : 'Done'); 
             setActiveView('schedule'); 
           }}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden shadow-lg ${
+          className={`p-4 rounded-2xl glass-card transition-all cursor-pointer relative overflow-hidden group ${
             commissioningFilter !== 'All'
-              ? 'bg-slate-900 border-emerald-600 ring-1 ring-emerald-600/40'
-              : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+              ? 'border-cyan-500/80 ring-1 ring-cyan-500/40 glow-cyan'
+              : 'hover:border-cyan-500/40'
           }`}
         >
+          <div className="absolute -right-3 -top-3 w-20 h-20 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition-all pointer-events-none"></div>
+
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
@@ -369,45 +373,45 @@ export const ScheduleStats: React.FC = () => {
                   setCommissioningFilter(e.target.value);
                   setActiveView('schedule');
                 }}
-                className={`appearance-none cursor-pointer py-0.5 pl-2.5 pr-6 rounded-full text-[10.5px] font-bold border transition-all shadow-sm focus:outline-none ${
+                className={`appearance-none cursor-pointer py-1 pl-2.5 pr-6 rounded-lg text-[10.5px] font-bold border transition-all focus:outline-none ${
                   commissioningFilter !== 'All'
-                    ? 'bg-emerald-700 text-white border-emerald-500 ring-1 ring-emerald-500/50'
-                    : 'bg-[#047857] hover:bg-[#065f46] text-white border-emerald-600/50'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 ring-1 ring-cyan-500/30'
+                    : 'bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-700/80'
                 }`}
                 title="Filter schedule by Commissioning status"
               >
                 <option value="All" className="bg-slate-900 text-slate-300">All Comm ({total})</option>
-                <option value="Done" className="bg-slate-900 text-emerald-400 font-bold">✓ Total Done ({commDone})</option>
-                <option value="Complete By Bargen" className="bg-slate-900 text-emerald-300">✓ Complete By Bargen ({commBargen})</option>
-                <option value="Complete By VEL" className="bg-slate-900 text-teal-300">✓ Complete By VEL ({commVel})</option>
-                <option value="Progress" className="bg-slate-900 text-green-300">⏳ Progress ({commProgress})</option>
+                <option value="Done" className="bg-slate-900 text-cyan-400 font-bold">✓ Total Done ({commDone})</option>
+                <option value="Complete By Bargen" className="bg-slate-900 text-teal-300">✓ Complete By Bargen ({commBargen})</option>
+                <option value="Complete By VEL" className="bg-slate-900 text-emerald-300">✓ Complete By VEL ({commVel})</option>
+                <option value="Progress" className="bg-slate-900 text-sky-300">⏳ Progress ({commProgress})</option>
                 <option value="Pending" className="bg-slate-900 text-rose-400">⏱ Pending ({commPending})</option>
               </select>
-              <ChevronDown className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/90" />
+              <ChevronDown className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
             </div>
           </div>
 
           <div className="flex items-baseline justify-between mt-1">
-            <div className="text-2xl font-extrabold text-white">
+            <div className="text-2xl font-black text-white">
               {commDone} <span className="text-xs font-normal text-slate-400">/ {total}</span>
             </div>
-            <span className="text-xs font-bold text-emerald-400 font-mono">{commPercent}%</span>
+            <span className="text-xs font-black text-cyan-400 font-mono">{commPercent}%</span>
           </div>
 
           {/* 3-Part Progress bar */}
-          <div className="w-full bg-slate-800 h-2 rounded-full mt-2.5 overflow-hidden flex">
+          <div className="w-full bg-slate-950/80 h-2 rounded-full mt-2.5 overflow-hidden flex border border-slate-800/80">
             <div 
-              className="bg-[#047857] h-full transition-all duration-300" 
+              className="bg-cyan-500 h-full transition-all duration-300" 
               style={{ width: `${commPercent}%` }} 
               title={`Total Done: ${commDone} (${commBargen} Bargen, ${commVel} VEL)`}
             />
             <div 
-              className="bg-[#86efac] h-full transition-all duration-300" 
+              className="bg-sky-400 h-full transition-all duration-300" 
               style={{ width: `${commProgressPercent}%` }} 
               title={`Progress: ${commProgress}`}
             />
             <div 
-              className="bg-[#991b1b] h-full transition-all duration-300" 
+              className="bg-rose-500/70 h-full transition-all duration-300" 
               style={{ width: `${commPendingPercent}%` }} 
               title={`Pending: ${commPending}`}
             />
@@ -422,7 +426,7 @@ export const ScheduleStats: React.FC = () => {
                 setActiveView('schedule');
               }}
               className={`font-semibold cursor-pointer transition-colors ${
-                commissioningFilter === 'Done' ? 'text-emerald-300 underline font-bold' : 'text-emerald-400 hover:text-emerald-300'
+                commissioningFilter === 'Done' ? 'text-cyan-300 underline font-bold' : 'text-cyan-400 hover:text-cyan-300'
               }`}
               title={`Click to view all ${commDone} completed cables (${commBargen} by Bargen, ${commVel} by VEL)`}
             >
@@ -436,7 +440,7 @@ export const ScheduleStats: React.FC = () => {
                 setActiveView('schedule');
               }}
               className={`cursor-pointer transition-colors ${
-                commissioningFilter === 'Progress' ? 'text-green-300 underline font-bold' : 'text-emerald-200/90 hover:text-white'
+                commissioningFilter === 'Progress' ? 'text-sky-300 underline font-bold' : 'text-sky-400/90 hover:text-white'
               }`}
               title={`Click to view ${commProgress} cables in progress`}
             >
@@ -450,7 +454,7 @@ export const ScheduleStats: React.FC = () => {
                 setActiveView('schedule');
               }}
               className={`font-semibold cursor-pointer transition-colors ${
-                commissioningFilter === 'Pending' ? 'text-rose-300 underline font-bold' : 'text-rose-400 hover:text-rose-300'
+                commissioningFilter === 'Pending' ? 'text-rose-300 underline font-bold' : 'text-rose-400/90 hover:text-rose-300'
               }`}
               title={`Click to view ${commPending} pending cables`}
             >
@@ -461,8 +465,10 @@ export const ScheduleStats: React.FC = () => {
 
         {/* Phase 4: Approve By (Sign-offs) */}
         <div 
-          className="p-4 rounded-2xl border transition-all bg-slate-900/80 border-slate-800 hover:border-slate-700 shadow-lg"
+          className="p-4 rounded-2xl glass-card transition-all relative overflow-hidden group hover:border-amber-500/40"
         >
+          <div className="absolute -right-3 -top-3 w-20 h-20 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all pointer-events-none"></div>
+
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
               Approve By (Sign-off)
@@ -473,45 +479,71 @@ export const ScheduleStats: React.FC = () => {
             </span>
           </div>
 
-          <div className="space-y-1.5 mt-2">
+          <div className="space-y-2 mt-2">
+            {/* Level 1: Nayem Siddik */}
             <div 
               onClick={() => {
                 setApproverFilter(approverFilter === 'Nayem Siddik (Sr. Engr)' ? 'All' : 'Nayem Siddik (Sr. Engr)');
                 setActiveView('schedule');
               }}
-              className={`flex items-center justify-between text-[11px] p-1 rounded-lg cursor-pointer transition-colors ${
-                approverFilter === 'Nayem Siddik (Sr. Engr)' ? 'bg-emerald-500/20 text-emerald-300 font-bold' : 'hover:bg-slate-800 text-slate-400'
+              className={`p-1.5 rounded-xl cursor-pointer transition-all border ${
+                approverFilter === 'Nayem Siddik (Sr. Engr)' 
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' 
+                  : 'bg-slate-950/40 border-slate-800/80 hover:border-slate-700 text-slate-400'
               }`}
               title="Click to filter cables signed by Level 1: Nayem Siddik"
             >
-              <span>Level 1: <strong className="text-white">Nayem Siddik</strong></span>
-              <span className="font-mono font-bold text-emerald-400">{approvedNaim} Signed</span>
+              <div className="flex items-center justify-between text-[11px]">
+                <span>Level 1: <strong className="text-white">Nayem Siddik</strong></span>
+                <span className="font-mono font-bold text-emerald-400">{approvedNaim} Signed ({naimPercent}%)</span>
+              </div>
+              <div className="w-full bg-slate-900 h-1 rounded-full mt-1 overflow-hidden">
+                <div className="bg-emerald-400 h-full rounded-full transition-all" style={{ width: `${naimPercent}%` }}></div>
+              </div>
             </div>
+
+            {/* Level 2: Mossadek Hossain */}
             <div 
               onClick={() => {
                 setApproverFilter(approverFilter === 'Mossadek Hossain (Sr. Engr)' ? 'All' : 'Mossadek Hossain (Sr. Engr)');
                 setActiveView('schedule');
               }}
-              className={`flex items-center justify-between text-[11px] p-1 rounded-lg cursor-pointer transition-colors ${
-                approverFilter === 'Mossadek Hossain (Sr. Engr)' ? 'bg-emerald-500/20 text-emerald-300 font-bold' : 'hover:bg-slate-800 text-slate-400'
+              className={`p-1.5 rounded-xl cursor-pointer transition-all border ${
+                approverFilter === 'Mossadek Hossain (Sr. Engr)' 
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' 
+                  : 'bg-slate-950/40 border-slate-800/80 hover:border-slate-700 text-slate-400'
               }`}
               title="Click to filter cables signed by Level 2: Mossadek Hossain"
             >
-              <span>Level 2: <strong className="text-white">Mossadek Hossain</strong></span>
-              <span className="font-mono font-bold text-emerald-400">{approvedMosaddik} Signed</span>
+              <div className="flex items-center justify-between text-[11px]">
+                <span>Level 2: <strong className="text-white">Mossadek Hossain</strong></span>
+                <span className="font-mono font-bold text-emerald-400">{approvedMosaddik} Signed ({mosaddikPercent}%)</span>
+              </div>
+              <div className="w-full bg-slate-900 h-1 rounded-full mt-1 overflow-hidden">
+                <div className="bg-emerald-400 h-full rounded-full transition-all" style={{ width: `${mosaddikPercent}%` }}></div>
+              </div>
             </div>
+
+            {/* Final: Md Fahad */}
             <div 
               onClick={() => {
                 setApproverFilter(approverFilter === 'Md Fahad (Manager PP)' ? 'All' : 'Md Fahad (Manager PP)');
                 setActiveView('schedule');
               }}
-              className={`flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-800 p-1 rounded-lg cursor-pointer transition-colors ${
-                approverFilter === 'Md Fahad (Manager PP)' ? 'bg-amber-500/20 text-amber-300 font-bold' : 'hover:bg-slate-800 text-slate-400'
+              className={`p-1.5 rounded-xl cursor-pointer transition-all border ${
+                approverFilter === 'Md Fahad (Manager PP)' 
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' 
+                  : 'bg-slate-950/40 border-slate-800/80 hover:border-amber-500/30 text-slate-400'
               }`}
               title="Click to filter cables approved by Final: Md Fahad"
             >
-              <span className="text-amber-300 font-semibold">Final: <strong>Md Fahad (Manager PP)</strong></span>
-              <span className="font-mono font-bold text-amber-400">{approvedFahad} Approved</span>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-amber-300 font-semibold">Final: <strong>Md Fahad (Manager PP)</strong></span>
+                <span className="font-mono font-bold text-amber-400">{approvedFahad} Approved ({fahadPercent}%)</span>
+              </div>
+              <div className="w-full bg-slate-900 h-1 rounded-full mt-1 overflow-hidden">
+                <div className="bg-amber-400 h-full rounded-full transition-all" style={{ width: `${fahadPercent}%` }}></div>
+              </div>
             </div>
           </div>
         </div>

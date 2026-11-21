@@ -125,7 +125,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className={`relative w-full ${currentUser ? 'max-w-2xl' : 'max-w-md'} bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-7 text-slate-100 transition-all`}
+        className={`relative w-full ${currentUser ? 'max-w-2xl' : 'max-w-md'} glass-card rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-7 text-slate-100 transition-all`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Glow decoration */}

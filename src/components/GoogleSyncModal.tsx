@@ -134,7 +134,7 @@ export const GoogleSyncModal: React.FC<GoogleSyncModalProps> = ({ isOpen, onClos
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative my-8 text-xs max-h-[90vh] overflow-y-auto">
+      <div className="glass-card rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative my-8 text-xs max-h-[90vh] overflow-y-auto custom-scrollbar">
         
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
