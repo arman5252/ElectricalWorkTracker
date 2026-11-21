@@ -32,7 +32,7 @@ export const ScheduleStats: React.FC = () => {
   // Dynamic scope: if user selected LV or Control tab in schedule, metrics reflect that scope. Otherwise All.
   const scopedCables = useMemo(() => {
     if (scheduleTypeFilter !== 'All') {
-      return cables.filter(c => c.scheduleType.includes(scheduleTypeFilter));
+      return cables.filter(c => (c.scheduleType || '').includes(scheduleTypeFilter));
     }
     return cables;
   }, [cables, scheduleTypeFilter]);

@@ -121,7 +121,8 @@ export const VisualChartsView: React.FC = () => {
 
   // Top Conductor Sizes
   const sizeCounts = cables.reduce((acc, c) => {
-    acc[c.cableSize] = (acc[c.cableSize] || 0) + (c.runs || 1);
+    const size = c.cableSize || 'Unknown';
+    acc[size] = (acc[size] || 0) + (c.runs || 1);
     return acc;
   }, {} as Record<string, number>);
 
@@ -135,7 +136,8 @@ export const VisualChartsView: React.FC = () => {
 
   // Cables by Section (Top 8 sections)
   const sectionCounts = cables.reduce((acc, c) => {
-    const shortSec = c.section.length > 22 ? c.section.substring(0, 20) + '...' : c.section;
+    const sec = c.section || 'General';
+    const shortSec = sec.length > 22 ? sec.substring(0, 20) + '...' : sec;
     acc[shortSec] = (acc[shortSec] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);

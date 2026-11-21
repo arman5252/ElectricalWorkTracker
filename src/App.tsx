@@ -13,6 +13,7 @@ import { GoogleSyncModal } from './components/GoogleSyncModal';
 import { DataImportModal } from './components/DataImportModal';
 import { LoginModal } from './components/LoginModal';
 import { ToastContainer } from './components/ToastContainer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export const App: React.FC = () => {
   const { 
@@ -35,15 +36,19 @@ export const App: React.FC = () => {
 
       {/* Main Container - Full Widescreen for 14-Column Engineering Spreadsheet */}
       <main className="flex-1 max-w-[1920px] mx-auto w-full p-3 sm:p-5 lg:p-6 space-y-5">
-        {/* KPI & Quick Status Bar */}
-        <ScheduleStats />
+        <ErrorBoundary fallbackTitle="Error Loading Statistics Bar">
+          {/* KPI & Quick Status Bar */}
+          <ScheduleStats />
+        </ErrorBoundary>
 
-        {/* Dynamic View */}
-        {activeView === 'schedule' && <ScheduleView />}
-        {activeView === 'assignments' && <WorkAssignmentsView />}
-        {activeView === 'analytics' && <VisualChartsView />}
-        {activeView === 'boq' && <BoqView />}
-        {activeView === 'specs' && <SpecsView />}
+        {/* Dynamic View with Error Boundary to prevent black screen */}
+        <ErrorBoundary fallbackTitle="Error Rendering Active View">
+          {activeView === 'schedule' && <ScheduleView />}
+          {activeView === 'assignments' && <WorkAssignmentsView />}
+          {activeView === 'analytics' && <VisualChartsView />}
+          {activeView === 'boq' && <BoqView />}
+          {activeView === 'specs' && <SpecsView />}
+        </ErrorBoundary>
       </main>
 
       {/* Cable Details Drawer / Inspection Modal */}

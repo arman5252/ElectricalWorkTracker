@@ -226,7 +226,7 @@ export const ScheduleView: React.FC = () => {
   // Filtering
   const filteredCables = useMemo(() => {
     return cables.filter(cable => {
-      if (scheduleTypeFilter !== 'All' && !cable.scheduleType.includes(scheduleTypeFilter)) return false;
+      if (scheduleTypeFilter !== 'All' && !(cable.scheduleType || '').includes(scheduleTypeFilter)) return false;
       if (sectionFilter !== 'All' && cable.section !== sectionFilter) return false;
       if (fromLocationFilter !== 'All' && cable.fromLocation !== fromLocationFilter) return false;
       if (toLocationFilter !== 'All' && cable.toLocation !== toLocationFilter) return false;
@@ -474,8 +474,8 @@ export const ScheduleView: React.FC = () => {
           <div className="flex items-center gap-1.5 overflow-x-auto text-xs shrink-0">
             {[
               { id: 'All', label: 'All Schedules', count: cables.length },
-              { id: 'LV Power', label: 'LV Power Cables', count: cables.filter(c => c.scheduleType.includes('LV Power')).length },
-              { id: 'Control', label: 'Control Cables', count: cables.filter(c => c.scheduleType.includes('Control')).length }
+              { id: 'LV Power', label: 'LV Power Cables', count: cables.filter(c => (c.scheduleType || '').includes('LV Power')).length },
+              { id: 'Control', label: 'Control Cables', count: cables.filter(c => (c.scheduleType || '').includes('Control')).length }
             ].map(type => (
               <button
                 key={type.id}
@@ -882,7 +882,7 @@ export const ScheduleView: React.FC = () => {
 
               {/* Top Tier Headers */}
               <thead>
-                <tr className="bg-slate-900 text-white border-b border-slate-800 text-[11px] font-bold sticky top-0 z-20 backdrop-blur-md">
+                <tr className="bg-slate-900 text-white border-b border-slate-800 text-[11px] font-bold sticky top-0 z-20">
                   <th colSpan={4} className="py-2.5 px-3 border-r border-slate-800/80 bg-slate-900/95 text-slate-300 font-extrabold tracking-wider">
                     CABLE SPECIFICATION & ROUTING
                   </th>
