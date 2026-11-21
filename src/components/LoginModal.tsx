@@ -24,7 +24,7 @@ import {
   Check
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { authenticate, ACCOUNTS } from '../services/authService';
+import { authenticate } from '../services/authService';
 import { AppUser } from '../types';
 
 interface LoginModalProps {
@@ -138,27 +138,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     setUsername('');
     setPassword('');
     onClose();
-  };
-
-  const quickLogin = (key: string) => {
-    const acc = staffAccounts.find(a => a.id === key) || ACCOUNTS[key];
-    if (acc) {
-      const userObj: AppUser = 'user' in acc ? (acc as any).user : {
-        id: acc.id,
-        username: acc.username,
-        name: acc.name,
-        role: acc.role,
-        title: acc.title,
-        approvalKey: acc.approvalKey,
-        approvalName: acc.approvalName
-      };
-      login(userObj);
-      showToast(`Logged in as ${userObj.name} (${userObj.title})`, 'success');
-      setUsername('');
-      setPassword('');
-      setError(null);
-      onClose();
-    }
   };
 
   const handleInspectCableFromHistory = (tag: string) => {
@@ -810,44 +789,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               <span>Sign In as Authorized Personnel</span>
               <ArrowRight className="w-4 h-4" />
             </button>
-
-            {/* Quick 1-Click Login Selection */}
-            <div className="pt-3 border-t border-slate-800/80">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold text-slate-400">
-                  Quick 1-Click Login:
-                </span>
-                <span className="text-[10px] text-amber-400 font-medium">Click name to sign in instantly</span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                {staffAccounts.map((acc) => {
-                  const isAdminAcc = acc.role === 'admin';
-                  return (
-                    <button
-                      key={acc.id}
-                      type="button"
-                      onClick={() => quickLogin(acc.id)}
-                      className="p-2 bg-slate-950 hover:bg-slate-850 hover:border-amber-500/50 border border-slate-800 rounded-lg text-left transition-all group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className={`font-bold ${isAdminAcc ? 'text-amber-300 group-hover:text-amber-200' : 'text-white group-hover:text-emerald-300'}`}>
-                          {acc.name}
-                        </div>
-                        {isAdminAcc && (
-                          <span className="text-[8.5px] bg-amber-500/20 text-amber-300 px-1 rounded font-mono font-bold">ADMIN</span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-slate-400 truncate">
-                        {acc.title}
-                      </div>
-                      <div className="text-[9.5px] text-slate-500 font-mono mt-0.5">
-                        User: <span className="text-slate-400 font-semibold">{acc.username}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </form>
         )}
       </div>
