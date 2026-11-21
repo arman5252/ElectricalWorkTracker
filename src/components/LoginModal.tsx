@@ -50,6 +50,48 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const [historyScope, setHistoryScope] = useState<'mine' | 'all'>('mine');
   const [historySearch, setHistorySearch] = useState('');
 
+  // Filter edit history - TOP-LEVEL HOOK, MUST NOT BE CONDITIONALLY SKIPPED
+  const filteredHistory = useMemo(() => {
+    if (!currentUser || !Array.isArray(editHistory)) return [];
+    const myUsername = (currentUser.username || '').toLowerCase();
+    const myName = (currentUser.name || '').toLowerCase();
+
+    return editHistory.filter(record => {
+      if (!record) return false;
+      const recUsername = (record.staffUsername || '').toLowerCase();
+      const recName = (record.staffName || '').toLowerCase();
+
+      // Scope filter: My Edits vs All Staff
+      if (historyScope === 'mine') {
+        const isMe = (myUsername && recUsername === myUsername) || (myName && recName.includes(myName));
+        if (!isMe) return false;
+      }
+
+      // Keyword search
+      if (historySearch.trim()) {
+        const q = historySearch.toLowerCase();
+        const matchesTarget = (record.targetIdentifier || '').toLowerCase().includes(q);
+        const matchesAction = (record.action || '').toLowerCase().includes(q);
+        const matchesStaff = recName.includes(q);
+        const matchesNotes = (record.notes || '').toLowerCase().includes(q);
+        const matchesField = (record.fieldChanged || '').toLowerCase().includes(q);
+        const matchesVal = (record.newValue || '').toLowerCase().includes(q) || (record.oldValue || '').toLowerCase().includes(q);
+        if (!matchesTarget && !matchesAction && !matchesStaff && !matchesNotes && !matchesField && !matchesVal) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [editHistory, currentUser, historyScope, historySearch]);
+
+  const myEditsCount = useMemo(() => {
+    if (!currentUser || !Array.isArray(editHistory)) return 0;
+    const myUsername = (currentUser.username || '').toLowerCase();
+    return editHistory.filter(r => r && (r.staffUsername || '').toLowerCase() === myUsername).length;
+  }, [editHistory, currentUser]);
+
+  // Early return is now safely AFTER all React hooks
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -81,39 +123,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Filter edit history
-  const filteredHistory = useMemo(() => {
-    if (!currentUser) return [];
-    return editHistory.filter(record => {
-      // Scope filter: My Edits vs All Staff
-      if (historyScope === 'mine') {
-        const isMe = record.staffUsername.toLowerCase() === currentUser.username.toLowerCase() ||
-                     record.staffName.toLowerCase().includes(currentUser.name.toLowerCase());
-        if (!isMe) return false;
-      }
-
-      // Keyword search
-      if (historySearch.trim()) {
-        const q = historySearch.toLowerCase();
-        const matchesTarget = (record.targetIdentifier || '').toLowerCase().includes(q);
-        const matchesAction = (record.action || '').toLowerCase().includes(q);
-        const matchesStaff = (record.staffName || '').toLowerCase().includes(q);
-        const matchesNotes = (record.notes || '').toLowerCase().includes(q);
-        const matchesField = (record.fieldChanged || '').toLowerCase().includes(q);
-        const matchesVal = (record.newValue || '').toLowerCase().includes(q) || (record.oldValue || '').toLowerCase().includes(q);
-        if (!matchesTarget && !matchesAction && !matchesStaff && !matchesNotes && !matchesField && !matchesVal) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [editHistory, currentUser, historyScope, historySearch]);
-
-  const myEditsCount = currentUser 
-    ? editHistory.filter(r => r.staffUsername.toLowerCase() === currentUser.username.toLowerCase()).length
-    : 0;
-
   const handleInspectCableFromHistory = (tag: string) => {
     const cable = cables.find(c => c.cableTag === tag);
     if (cable) {
@@ -123,7 +132,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85">
       <div 
         className={`relative w-full ${currentUser ? 'max-w-2xl' : 'max-w-md'} glass-card rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-7 text-slate-100 transition-all`}
         onClick={(e) => e.stopPropagation()}
@@ -337,7 +346,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                     </div>
                   ) : (
                     filteredHistory.map((record) => {
-                      const isMe = record.staffUsername.toLowerCase() === currentUser.username.toLowerCase();
+                      const isMe = (record.staffUsername || '').toLowerCase() === (currentUser?.username || '').toLowerCase();
                       const dateObj = new Date(record.timestamp);
                       const formattedTime = !isNaN(dateObj.getTime())
                         ? dateObj.toLocaleString(undefined, { 

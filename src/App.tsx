@@ -51,38 +51,41 @@ export const App: React.FC = () => {
         </ErrorBoundary>
       </main>
 
-      {/* Cable Details Drawer / Inspection Modal */}
-      <CableDetailModal />
+      {/* Modals & Dialogs protected by ErrorBoundary */}
+      <ErrorBoundary fallbackTitle="Modal Display Error">
+        {/* Cable Details Drawer / Inspection Modal */}
+        <CableDetailModal />
 
-      {/* Work Assignment Modal - Assign Work to Staff (Staff Profile Only) */}
-      {isStaff && (
-        <AssignWorkModal
-          isOpen={isAssignModalOpen}
-          onClose={() => setIsAssignModalOpen(false)}
+        {/* Work Assignment Modal - Assign Work to Staff (Staff Profile Only) */}
+        {isStaff && (
+          <AssignWorkModal
+            isOpen={isAssignModalOpen}
+            onClose={() => setIsAssignModalOpen(false)}
+          />
+        )}
+
+        {/* Google Spreadsheet & Drive Cloud Integration Modal - Admin Profile Only */}
+        {currentUser?.role === 'admin' && (
+          <GoogleSyncModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+          />
+        )}
+
+        {/* Staff Authentication Login Modal */}
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          onClose={() => setIsLoginModalOpen(false)}
         />
-      )}
 
-      {/* Google Spreadsheet & Drive Cloud Integration Modal - Admin Profile Only */}
-      {currentUser?.role === 'admin' && (
-        <GoogleSyncModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-        />
-      )}
-
-      {/* Staff Authentication Login Modal */}
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-      />
-
-      {/* Engineering Data Import & Manual Entry Modal (Admin Only) */}
-      {currentUser?.role === 'admin' && (
-        <DataImportModal
-          isOpen={isImportModalOpen}
-          onClose={() => setIsImportModalOpen(false)}
-        />
-      )}
+        {/* Engineering Data Import & Manual Entry Modal (Admin Only) */}
+        {currentUser?.role === 'admin' && (
+          <DataImportModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+          />
+        )}
+      </ErrorBoundary>
 
       {/* Toast Alerts */}
       <ToastContainer />
