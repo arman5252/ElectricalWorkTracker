@@ -1,121 +1,142 @@
-import { AppUser } from '../types';
+import { AppUser, StaffAccountItem, UserRole } from '../types';
 
-export interface AuthAccount {
-  user: AppUser;
-  passwordHash: string; // password stored for client-side authentication
-}
-
-export const ACCOUNTS: Record<string, { password: string; user: AppUser }> = {
-  arman: {
+export const DEFAULT_STAFF_ACCOUNTS: StaffAccountItem[] = [
+  {
+    id: 'arman',
+    name: 'Arman (Admin)',
+    title: 'System Administrator',
+    role: 'admin',
+    username: 'arman',
     password: 'arman2026**',
-    user: {
-      username: 'arman',
-      name: 'Arman (Admin)',
-      title: 'System Administrator',
-      role: 'admin',
-      approvalKey: 'all',
-      approvalName: 'All Approvals'
-    }
+    approvalKey: 'all',
+    approvalName: 'All Approvals',
+    aliases: ['admin']
   },
-  admin: {
-    password: 'arman2026**',
-    user: {
-      username: 'arman',
-      name: 'Arman (Admin)',
-      title: 'System Administrator',
-      role: 'admin',
-      approvalKey: 'all',
-      approvalName: 'All Approvals'
-    }
-  },
-  nayem: {
+  {
+    id: 'nayem',
+    name: 'Nayem Siddik',
+    title: 'Senior Engineer',
+    role: 'engineer',
+    username: 'Nayem',
     password: 'Nayem2026',
-    user: {
-      username: 'Nayem',
-      name: 'Nayem Siddik',
-      title: 'Senior Engineer',
-      role: 'engineer',
-      approvalKey: 'approvedBy1',
-      approvalName: 'Nayem Siddik (Sr. Engr)'
-    }
+    approvalKey: 'approvedBy1',
+    approvalName: 'Nayem Siddik (Sr. Engr)',
+    aliases: ['naim', 'naimz']
   },
-  naim: {
-    password: 'Nayem2026',
-    user: {
-      username: 'Nayem',
-      name: 'Nayem Siddik',
-      title: 'Senior Engineer',
-      role: 'engineer',
-      approvalKey: 'approvedBy1',
-      approvalName: 'Nayem Siddik (Sr. Engr)'
-    }
-  },
-  naimz: {
-    password: 'Nayem2026',
-    user: {
-      username: 'Nayem',
-      name: 'Nayem Siddik',
-      title: 'Senior Engineer',
-      role: 'engineer',
-      approvalKey: 'approvedBy1',
-      approvalName: 'Nayem Siddik (Sr. Engr)'
-    }
-  },
-  mossadek: {
+  {
+    id: 'mossadek',
+    name: 'Mossadek Hossain',
+    title: 'Senior Engineer',
+    role: 'engineer',
+    username: 'Mossadek',
     password: 'Mossadek2026',
-    user: {
-      username: 'Mossadek',
-      name: 'Mossadek Hossain',
-      title: 'Senior Engineer',
-      role: 'engineer',
-      approvalKey: 'approvedBy2',
-      approvalName: 'Mossadek Hossain (Sr. Engr)'
-    }
+    approvalKey: 'approvedBy2',
+    approvalName: 'Mossadek Hossain (Sr. Engr)',
+    aliases: ['mosaddik', 'mosadek']
   },
-  mosaddik: {
-    password: 'Mossadek2026',
-    user: {
-      username: 'Mossadek',
-      name: 'Mossadek Hossain',
-      title: 'Senior Engineer',
-      role: 'engineer',
-      approvalKey: 'approvedBy2',
-      approvalName: 'Mossadek Hossain (Sr. Engr)'
-    }
-  },
-  mosadek: {
-    password: 'Mossadek2026',
-    user: {
-      username: 'Mossadek',
-      name: 'Mossadek Hossain',
-      title: 'Senior Engineer',
-      role: 'engineer',
-      approvalKey: 'approvedBy2',
-      approvalName: 'Mossadek Hossain (Sr. Engr)'
-    }
-  },
-  fahad: {
+  {
+    id: 'fahad',
+    name: 'Md Fahad',
+    title: 'Manager PP',
+    role: 'manager',
+    username: 'Fahad',
     password: 'Fahad2026',
-    user: {
-      username: 'Fahad',
-      name: 'Md Fahad',
-      title: 'Manager PP',
-      role: 'manager',
-      approvalKey: 'approvedBy3',
-      approvalName: 'Md Fahad (Manager PP)'
-    }
+    approvalKey: 'approvedBy3',
+    approvalName: 'Md Fahad (Manager PP)',
+    aliases: ['fahad-sir']
   }
-};
+];
 
+export const STAFF_ACCOUNTS_STORAGE_KEY = 'volttrack_staff_accounts_credentials';
 export const AUTH_STORAGE_KEY = 'volttrack_auth_session_user';
 
-export function authenticate(username: string, password: string): AppUser | null {
+export function loadStoredStaffAccounts(): StaffAccountItem[] {
+  try {
+    const saved = localStorage.getItem(STAFF_ACCOUNTS_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return DEFAULT_STAFF_ACCOUNTS.map(def => {
+          const match = parsed.find((p: any) => p && (p.id === def.id || (p.role === def.role && p.approvalKey === def.approvalKey)));
+          if (match) {
+            return {
+              ...def,
+              username: match.username || def.username,
+              password: match.password || def.password,
+              lastUpdated: match.lastUpdated
+            };
+          }
+          return def;
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse stored staff accounts:', e);
+  }
+  return DEFAULT_STAFF_ACCOUNTS;
+}
+
+export function saveStoredStaffAccounts(accounts: StaffAccountItem[]) {
+  try {
+    localStorage.setItem(STAFF_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+  } catch (e) {
+    console.warn('Failed to save staff accounts to storage:', e);
+  }
+}
+
+export const getAccountsMap = (accountsList?: StaffAccountItem[]): Record<string, { password: string; user: AppUser }> => {
+  const accounts = accountsList && accountsList.length > 0 ? accountsList : loadStoredStaffAccounts();
+  const map: Record<string, { password: string; user: AppUser }> = {};
+  for (const acc of accounts) {
+    const user: AppUser = {
+      username: acc.username,
+      name: acc.name,
+      title: acc.title,
+      role: acc.role,
+      approvalKey: acc.approvalKey,
+      approvalName: acc.approvalName
+    };
+    map[acc.id.toLowerCase()] = { password: acc.password, user };
+    map[acc.username.toLowerCase()] = { password: acc.password, user };
+    if (Array.isArray(acc.aliases)) {
+      for (const a of acc.aliases) {
+        map[a.toLowerCase()] = { password: acc.password, user };
+      }
+    }
+  }
+  return map;
+};
+
+// Dynamic proxy for ACCOUNTS dictionary to always provide latest saved credentials
+export const ACCOUNTS = new Proxy({} as Record<string, { password: string; user: AppUser }>, {
+  get(_, prop: string) {
+    if (typeof prop !== 'string') return undefined;
+    return getAccountsMap()[prop.toLowerCase()];
+  }
+});
+
+export function authenticate(username: string, password: string, accountsList?: StaffAccountItem[]): AppUser | null {
+  const accounts = accountsList && accountsList.length > 0 ? accountsList : loadStoredStaffAccounts();
   const cleanUser = String(username || '').trim().toLowerCase();
-  const account = ACCOUNTS[cleanUser];
-  if (!account) return null;
   const pInput = String(password || '').trim();
-  if (account.password === pInput || account.password.toLowerCase() === pInput.toLowerCase()) {
-    return account.user;
+
+  const found = accounts.find(acc => {
+    if ((acc.username || '').toLowerCase() === cleanUser) return true;
+    if (Array.isArray(acc.aliases) && acc.aliases.some(a => a.toLowerCase() === cleanUser)) return true;
+    return false;
+  });
+
+  if (!found) return null;
+
+  if (found.password === pInput || found.password.toLowerCase() === pInput.toLowerCase()) {
+    return {
+      username: found.username,
+      name: found.name,
+      title: found.title,
+      role: found.role,
+      approvalKey: found.approvalKey,
+      approvalName: found.approvalName
+    };
   }
   return null;
 }

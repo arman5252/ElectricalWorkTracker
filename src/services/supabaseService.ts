@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { CableEntry, WorkAssignment, StaffEditRecord } from '../types';
+import { CableEntry, WorkAssignment, StaffEditRecord, StaffAccountItem } from '../types';
 
 export const SUPABASE_URL_KEY = 'volttrack_supabase_url';
 export const SUPABASE_ANON_KEY = 'volttrack_supabase_anon_key';
@@ -367,6 +367,52 @@ export async function saveEditHistoryToSupabase(history: StaffEditRecord[]): Pro
     return true;
   } catch (e: any) {
     console.error('[Supabase Edit History Save Exception]:', e?.message || e);
+    return false;
+  }
+}
+
+export const STAFF_ACCOUNTS_RECORD_ID = 'SYS-STAFF-ACCOUNTS-SYNC';
+
+export async function fetchStaffAccountsFromSupabase(): Promise<StaffAccountItem[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client
+      .from('cables')
+      .select('description')
+      .eq('id', STAFF_ACCOUNTS_RECORD_ID)
+      .maybeSingle();
+
+    if (error || !data || !data.description) return null;
+    return JSON.parse(data.description) as StaffAccountItem[];
+  } catch (e) {
+    console.warn('[Supabase Staff Accounts Fetch Error]:', e);
+    return null;
+  }
+}
+
+export async function saveStaffAccountsToSupabase(accounts: StaffAccountItem[]): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  try {
+    const row = {
+      id: STAFF_ACCOUNTS_RECORD_ID,
+      schedule_type: 'System Meta',
+      section: 'Security & Auth',
+      sr_no: '0',
+      cable_tag: '__STAFF_ACCOUNTS__',
+      description: JSON.stringify(accounts),
+      notes: 'Real-time staff credentials store (Admin managed)',
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await client.from('cables').upsert(row, { onConflict: 'id' });
+    if (error) {
+      console.error('[Supabase Staff Accounts Save Error]:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e: any) {
+    console.error('[Supabase Staff Accounts Save Exception]:', e?.message || e);
     return false;
   }
 }

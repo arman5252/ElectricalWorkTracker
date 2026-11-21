@@ -8,9 +8,18 @@ import {
   AppUser,
   WorkAssignment,
   STAFF_MEMBERS,
-  StaffEditRecord
+  StaffEditRecord,
+  StaffAccountItem
 } from '../types';
-import { AUTH_STORAGE_KEY, canEditSchedule, canSignApproval, isStaffProfile } from '../services/authService';
+import { 
+  AUTH_STORAGE_KEY, 
+  canEditSchedule, 
+  canSignApproval, 
+  isStaffProfile,
+  loadStoredStaffAccounts,
+  saveStoredStaffAccounts,
+  DEFAULT_STAFF_ACCOUNTS
+} from '../services/authService';
 import { initialCables, boqSummary, projectMeta } from '../data/cableData';
 import { INITIAL_EDIT_HISTORY } from '../data/editHistoryData';
 import { 
@@ -25,7 +34,10 @@ import {
   WORK_ASSIGNMENTS_RECORD_ID,
   fetchEditHistoryFromSupabase,
   saveEditHistoryToSupabase,
-  EDIT_HISTORY_RECORD_ID
+  EDIT_HISTORY_RECORD_ID,
+  fetchStaffAccountsFromSupabase,
+  saveStaffAccountsToSupabase,
+  STAFF_ACCOUNTS_RECORD_ID
 } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
 
@@ -124,8 +136,8 @@ interface AppContextType {
   currentUser: AppUser | null;
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
-  profileModalTab: 'profile' | 'history';
-  setProfileModalTab: (tab: 'profile' | 'history') => void;
+  profileModalTab: 'profile' | 'history' | 'accounts';
+  setProfileModalTab: (tab: 'profile' | 'history' | 'accounts') => void;
   isImportModalOpen: boolean;
   setIsImportModalOpen: (open: boolean) => void;
   login: (user: AppUser) => void;
@@ -133,6 +145,11 @@ interface AppContextType {
   canEdit: boolean;
   isStaff: boolean;
   canApproveLevel: (level: 1 | 2 | 3) => boolean;
+
+  // Staff Credentials & Security (Admin Managed)
+  staffAccounts: StaffAccountItem[];
+  updateStaffCredentials: (staffId: string, newUsername: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
+  resetStaffCredentialsToDefault: () => Promise<void>;
 
   // Staff Edit History & Audit Logs
   editHistory: StaffEditRecord[];
@@ -263,8 +280,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return null;
   });
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [profileModalTab, setProfileModalTab] = useState<'profile' | 'history'>('profile');
+  const [profileModalTab, setProfileModalTab] = useState<'profile' | 'history' | 'accounts'>('profile');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // Staff Credentials Accounts State (Admin Managed)
+  const [staffAccounts, setStaffAccounts] = useState<StaffAccountItem[]>(() => loadStoredStaffAccounts());
 
   // Staff Edit History & Audit Logs
   const [editHistory, setEditHistory] = useState<StaffEditRecord[]>(() => {
@@ -311,6 +331,114 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {}
     await saveEditHistoryToSupabase([]);
     showToast('Edit history cleared', 'info');
+  };
+
+  const updateStaffCredentials = async (
+    staffId: string,
+    newUsername: string,
+    newPassword: string
+  ): Promise<{ success: boolean; message: string }> => {
+    // Strict Admin check: ONLY Admin has permission to modify credentials
+    if (currentUser?.role !== 'admin') {
+      return {
+        success: false,
+        message: 'Permission Denied: Only the System Administrator can change usernames and passwords.'
+      };
+    }
+
+    const uClean = String(newUsername || '').trim();
+    const pClean = String(newPassword || '').trim();
+
+    if (!uClean) {
+      return { success: false, message: 'Username cannot be empty.' };
+    }
+    if (pClean.length < 4) {
+      return { success: false, message: 'Password must be at least 4 characters long.' };
+    }
+
+    // Check duplicate username with other accounts
+    const duplicate = staffAccounts.find(
+      acc => acc.id !== staffId && acc.username.toLowerCase() === uClean.toLowerCase()
+    );
+    if (duplicate) {
+      return {
+        success: false,
+        message: `Username "${uClean}" is already in use by ${duplicate.name}. Please choose a unique username.`
+      };
+    }
+
+    const targetAccount = staffAccounts.find(acc => acc.id === staffId);
+    if (!targetAccount) {
+      return { success: false, message: 'Staff profile not found.' };
+    }
+
+    const oldUsername = targetAccount.username;
+    const updatedAccounts = staffAccounts.map(acc => {
+      if (acc.id === staffId) {
+        return {
+          ...acc,
+          username: uClean,
+          password: pClean,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      return acc;
+    });
+
+    setStaffAccounts(updatedAccounts);
+    saveStoredStaffAccounts(updatedAccounts);
+    saveStaffAccountsToSupabase(updatedAccounts).catch(err =>
+      console.warn('Supabase staff accounts sync error:', err)
+    );
+
+    // If Admin updated their own account, keep active currentUser in sync
+    if (targetAccount.id === 'arman' || (currentUser.username && currentUser.username.toLowerCase() === oldUsername.toLowerCase())) {
+      const updatedSelf: AppUser = {
+        ...currentUser,
+        username: uClean
+      };
+      setCurrentUser(updatedSelf);
+      try {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updatedSelf));
+      } catch (e) {}
+    }
+
+    // Audit record in edit history
+    recordStaffEdit({
+      targetType: 'General',
+      targetIdentifier: targetAccount.name,
+      action: 'Updated Staff Credentials',
+      fieldChanged: 'Username/Password',
+      oldValue: `User: ${oldUsername}`,
+      newValue: `User: ${uClean}`,
+      notes: `Administrator modified credentials for ${targetAccount.name}`
+    });
+
+    showToast(`Credentials updated for ${targetAccount.name}!`, 'success');
+    return {
+      success: true,
+      message: `Credentials for ${targetAccount.name} successfully updated!`
+    };
+  };
+
+  const resetStaffCredentialsToDefault = async () => {
+    if (currentUser?.role !== 'admin') {
+      showToast('Permission Denied: Only Admin can reset credentials.', 'warning');
+      return;
+    }
+    setStaffAccounts(DEFAULT_STAFF_ACCOUNTS);
+    saveStoredStaffAccounts(DEFAULT_STAFF_ACCOUNTS);
+    await saveStaffAccountsToSupabase(DEFAULT_STAFF_ACCOUNTS);
+
+    recordStaffEdit({
+      targetType: 'General',
+      targetIdentifier: 'All Staff Accounts',
+      action: 'Reset Credentials to Default',
+      fieldChanged: 'Staff Passwords',
+      notes: 'Administrator reset all staff usernames and passwords to system defaults'
+    });
+
+    showToast('All staff credentials reset to factory defaults.', 'info');
   };
 
   const login = (user: AppUser) => {
@@ -452,6 +580,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }).catch(err => console.warn('[Supabase Edit History Load Warning]:', err));
 
+    // 1d. Fetch Staff Accounts Credentials from Supabase
+    fetchStaffAccountsFromSupabase().then(dbAccounts => {
+      if (dbAccounts && Array.isArray(dbAccounts) && dbAccounts.length > 0) {
+        setStaffAccounts(dbAccounts);
+        saveStoredStaffAccounts(dbAccounts);
+        console.log(`[Supabase DB] Loaded ${dbAccounts.length} staff credentials accounts`);
+      }
+    }).catch(err => console.warn('[Supabase Staff Accounts Load Warning]:', err));
+
     // 2. Real-Time WebSocket Channel for instant sync across all users
     try {
       const channel = client
@@ -477,6 +614,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (Array.isArray(parsed)) {
                   setEditHistory(parsed);
                   localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(parsed));
+                }
+              } catch (e) {}
+              return;
+            }
+
+            // Check if it's staff accounts record
+            if (payload.new && (payload.new.id === STAFF_ACCOUNTS_RECORD_ID || payload.new.cable_tag === '__STAFF_ACCOUNTS__') && payload.new.description) {
+              try {
+                const parsed = JSON.parse(payload.new.description);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  setStaffAccounts(parsed);
+                  saveStoredStaffAccounts(parsed);
                 }
               } catch (e) {}
               return;
@@ -1053,6 +1202,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       canEdit,
       isStaff,
       canApproveLevel,
+      staffAccounts,
+      updateStaffCredentials,
+      resetStaffCredentialsToDefault,
       editHistory,
       recordStaffEdit,
       clearEditHistory,

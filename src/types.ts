@@ -9,6 +9,19 @@ export interface AppUser {
   approvalName?: string;
 }
 
+export interface StaffAccountItem {
+  id: string; // 'arman' | 'nayem' | 'mossadek' | 'fahad'
+  name: string;
+  title: string;
+  role: UserRole;
+  username: string;
+  password: string;
+  approvalKey?: 'approvedBy1' | 'approvedBy2' | 'approvedBy3' | 'all';
+  approvalName?: string;
+  aliases?: string[];
+  lastUpdated?: string;
+}
+
 export const STAFF_MEMBERS: { name: string; username: string; title: string; role: UserRole }[] = [
   { name: 'Nayem Siddik', username: 'Nayem', title: 'Senior Engineer', role: 'engineer' },
   { name: 'Mossadek Hossain', username: 'Mossadek', title: 'Senior Engineer', role: 'engineer' },
