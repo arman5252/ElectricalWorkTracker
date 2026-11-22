@@ -362,8 +362,8 @@ export async function saveEditHistoryToSupabase(history: StaffEditRecord[]): Pro
       section: 'Audit Logs',
       sr_no: '0',
       cable_tag: '__EDIT_HISTORY__',
-      description: JSON.stringify(history.slice(0, 100)),
-      notes: 'Real-time staff edit history and audit log store',
+      description: JSON.stringify(history.slice(0, 500)),
+      notes: 'Real-time staff edit history and audit log store (recent 500 records)',
       updated_at: new Date().toISOString()
     };
     const { error } = await client.from('cables').upsert(row, { onConflict: 'id' });

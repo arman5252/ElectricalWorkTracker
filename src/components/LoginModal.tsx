@@ -421,8 +421,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                           ? 'bg-amber-500 text-slate-950 shadow-sm'
                           : 'text-slate-400 hover:text-white'
                       }`}
+                      title="Showing recent records (automatically rolls over to keep newest 500)"
                     >
-                      All Staff ({editHistory.length})
+                      All Staff ({editHistory.length}/500)
                     </button>
                   </div>
 

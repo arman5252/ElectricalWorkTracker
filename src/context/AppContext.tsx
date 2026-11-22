@@ -361,16 +361,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  // Staff Edit History & Audit Logs
+  // Maximum number of edit history records retained (auto-prunes older records)
+  const MAX_EDIT_HISTORY_RECORDS = 500;
+
+  // Staff Edit History & Audit Logs (recent 500 records)
   const [editHistory, setEditHistory] = useState<StaffEditRecord[]>(() => {
     try {
       const saved = localStorage.getItem(EDIT_HISTORY_STORAGE_KEY);
       if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) return parsed.slice(0, MAX_EDIT_HISTORY_RECORDS);
       }
     } catch (e) {}
-    return INITIAL_EDIT_HISTORY;
+    return INITIAL_EDIT_HISTORY.slice(0, MAX_EDIT_HISTORY_RECORDS);
   });
 
   const recordStaffEdit = (entry: Omit<StaffEditRecord, 'id' | 'timestamp' | 'staffUsername' | 'staffName' | 'staffRole'>) => {
@@ -390,7 +393,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setEditHistory(prev => {
-      const next = [newRecord, ...prev].slice(0, 200);
+      // Automatically keep the most recent 500 records, older records are deleted
+      const next = [newRecord, ...prev].slice(0, MAX_EDIT_HISTORY_RECORDS);
       try {
         localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(next));
       } catch (e) {}
@@ -647,11 +651,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 1c. Fetch Staff Edit History from Supabase
     fetchEditHistoryFromSupabase().then(dbHistory => {
       if (dbHistory !== null && Array.isArray(dbHistory)) {
-        setEditHistory(dbHistory);
+        const trimmed = dbHistory.slice(0, MAX_EDIT_HISTORY_RECORDS);
+        setEditHistory(trimmed);
         try {
-          localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(dbHistory));
+          localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(trimmed));
         } catch (e) {}
-        console.log(`[Supabase DB] Loaded ${dbHistory.length} edit history records`);
+        console.log(`[Supabase DB] Loaded ${trimmed.length} edit history records (capped at ${MAX_EDIT_HISTORY_RECORDS})`);
       }
     }).catch(err => console.warn('[Supabase Edit History Load Warning]:', err));
 
@@ -698,8 +703,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               try {
                 const parsed = JSON.parse(payload.new.description);
                 if (Array.isArray(parsed)) {
-                  setEditHistory(parsed);
-                  localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(parsed));
+                  const trimmed = parsed.slice(0, MAX_EDIT_HISTORY_RECORDS);
+                  setEditHistory(trimmed);
+                  localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(trimmed));
                 }
               } catch (e) {}
               return;
