@@ -254,9 +254,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [workAssignments, setWorkAssignments] = useState<WorkAssignment[]>(() => {
     try {
       const saved = localStorage.getItem(ASSIGNMENTS_STORAGE_KEY);
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
     return INITIAL_WORK_ASSIGNMENTS;
@@ -290,9 +290,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [editHistory, setEditHistory] = useState<StaffEditRecord[]>(() => {
     try {
       const saved = localStorage.getItem(EDIT_HISTORY_STORAGE_KEY);
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
     return INITIAL_EDIT_HISTORY;
@@ -327,7 +327,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const clearEditHistory = async () => {
     setEditHistory([]);
     try {
-      localStorage.removeItem(EDIT_HISTORY_STORAGE_KEY);
+      localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify([]));
     } catch (e) {}
     await saveEditHistoryToSupabase([]);
     showToast('Edit history cleared', 'info');
@@ -560,7 +560,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 1b. Fetch Work Assignments from Supabase
     fetchWorkAssignmentsFromSupabase().then(dbAssignments => {
-      if (dbAssignments && Array.isArray(dbAssignments) && dbAssignments.length > 0) {
+      if (dbAssignments !== null && Array.isArray(dbAssignments)) {
         setWorkAssignments(dbAssignments);
         try {
           localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(dbAssignments));
@@ -571,7 +571,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 1c. Fetch Staff Edit History from Supabase
     fetchEditHistoryFromSupabase().then(dbHistory => {
-      if (dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0) {
+      if (dbHistory !== null && Array.isArray(dbHistory)) {
         setEditHistory(dbHistory);
         try {
           localStorage.setItem(EDIT_HISTORY_STORAGE_KEY, JSON.stringify(dbHistory));
@@ -1076,9 +1076,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }));
     }
 
-    saveWorkAssignmentsToSupabase(nextAssignments).catch(err => {
+    try {
+      await saveWorkAssignmentsToSupabase(nextAssignments);
+    } catch (err) {
       console.warn('Failed to sync assignments to Supabase:', err);
-    });
+    }
 
     recordStaffEdit({
       targetType: 'Work Assignment',
@@ -1130,7 +1132,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       notes: updates.completionRemarks ? `Remarks: ${updates.completionRemarks}` : undefined
     });
 
-    saveWorkAssignmentsToSupabase(nextAssignments).catch(e => console.warn(e));
+    try {
+      await saveWorkAssignmentsToSupabase(nextAssignments);
+    } catch (e) {
+      console.warn('Failed to sync updated assignment to Supabase:', e);
+    }
     showToast('Work assignment updated successfully!', 'success');
     return true;
   };
@@ -1150,12 +1156,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {}
 
     if (assignment?.cableTag || assignment?.cableId) {
-      setCables(prev => prev.map(c => {
-        if ((assignment.cableId && c.id === assignment.cableId) || (assignment.cableTag && c.cableTag === assignment.cableTag)) {
-          return { ...c, assignedTo: undefined, assignedWorkId: undefined };
-        }
-        return c;
-      }));
+      setCables(prev => {
+        const next = prev.map(c => {
+          if ((assignment.cableId && c.id === assignment.cableId) || (assignment.cableTag && c.cableTag === assignment.cableTag)) {
+            return { ...c, assignedTo: undefined, assignedWorkId: undefined };
+          }
+          return c;
+        });
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
     }
 
     recordStaffEdit({
@@ -1167,7 +1179,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newValue: 'Removed'
     });
 
-    saveWorkAssignmentsToSupabase(nextAssignments).catch(e => console.warn(e));
+    try {
+      await saveWorkAssignmentsToSupabase(nextAssignments);
+    } catch (e) {
+      console.warn('Failed to sync deleted assignment to Supabase:', e);
+    }
     showToast('Work assignment removed', 'info');
     return true;
   };

@@ -209,7 +209,13 @@ export async function fetchAllCablesFromSupabase(): Promise<CableEntry[] | null>
     }
 
     if (!data || data.length === 0) return [];
-    const validRows = data.filter(r => !String(r.id || '').startsWith('__SYSTEM_'));
+    const validRows = data.filter(r => 
+      !String(r.id || '').startsWith('__SYSTEM_') && 
+      !String(r.id || '').startsWith('SYS-') && 
+      r.cable_tag !== '__STAFF_ACCOUNTS__' && 
+      r.cable_tag !== '__WORK_ASSIGNMENTS__' && 
+      r.cable_tag !== '__EDIT_HISTORY__'
+    );
     const mapped = validRows.map(mapDbRowToCableEntry);
     return sortCablesInOrder(mapped);
   } catch (e) {
