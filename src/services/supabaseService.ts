@@ -214,7 +214,8 @@ export async function fetchAllCablesFromSupabase(): Promise<CableEntry[] | null>
       !String(r.id || '').startsWith('SYS-') && 
       r.cable_tag !== '__STAFF_ACCOUNTS__' && 
       r.cable_tag !== '__WORK_ASSIGNMENTS__' && 
-      r.cable_tag !== '__EDIT_HISTORY__'
+      r.cable_tag !== '__EDIT_HISTORY__' && 
+      r.cable_tag !== '__CUSTOM_STATUSES__'
     );
     const mapped = validRows.map(mapDbRowToCableEntry);
     return sortCablesInOrder(mapped);
@@ -419,6 +420,52 @@ export async function saveStaffAccountsToSupabase(accounts: StaffAccountItem[]):
     return true;
   } catch (e: any) {
     console.error('[Supabase Staff Accounts Save Exception]:', e?.message || e);
+    return false;
+  }
+}
+
+export const CUSTOM_STATUSES_RECORD_ID = '__SYSTEM_CUSTOM_STATUSES__';
+
+export async function fetchCustomStatusesFromSupabase(): Promise<string[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client
+      .from('cables')
+      .select('description')
+      .eq('id', CUSTOM_STATUSES_RECORD_ID)
+      .maybeSingle();
+
+    if (error || !data || !data.description) return null;
+    return JSON.parse(data.description) as string[];
+  } catch (e) {
+    console.warn('[Supabase Custom Statuses Fetch Error]:', e);
+    return null;
+  }
+}
+
+export async function saveCustomStatusesToSupabase(statuses: string[]): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  try {
+    const row = {
+      id: CUSTOM_STATUSES_RECORD_ID,
+      schedule_type: 'System Meta',
+      section: 'Work Management',
+      sr_no: '0',
+      cable_tag: '__CUSTOM_STATUSES__',
+      description: JSON.stringify(statuses),
+      notes: 'Custom dynamic status options for cable stages',
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await client.from('cables').upsert(row, { onConflict: 'id' });
+    if (error) {
+      console.error('[Supabase Custom Statuses Save Error]:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e: any) {
+    console.error('[Supabase Custom Statuses Save Exception]:', e?.message || e);
     return false;
   }
 }

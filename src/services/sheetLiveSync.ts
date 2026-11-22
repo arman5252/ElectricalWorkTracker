@@ -16,6 +16,7 @@ function normalizeStatus(val: string): CableLayingStatus {
   if (up.includes('COMPLETE BY BARGEN') || up.includes('COMPLETE BY BERGEN')) return 'Complete By Bargen';
   if (up.includes('SCOPE OF BARGEN') || up.includes('SCOPE OF BERGEN')) return 'Scope of Bargen';
   if (up.includes('SCOPE OF VEL')) return 'Scope of VEL';
+  if (up.includes('SCOPE OF AKIJ') || up.includes('AKIJ')) return 'Scope of Akij';
   if (up.includes('OUT OF SCOPE') || up.includes('OUT SCOPE')) return 'Out of Scope';
   if (up === 'N/A' || up === 'NA' || up === 'NOT APPLICABLE') return 'N/A';
   if (up.includes('PROGRESS')) return 'Progress';

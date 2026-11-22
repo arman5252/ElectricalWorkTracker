@@ -95,8 +95,10 @@ export type CableStageStatus =
   | 'Pending' 
   | 'Scope of Bargen' 
   | 'Scope of VEL' 
+  | 'Scope of Akij'
   | 'Out of Scope' 
-  | 'N/A';
+  | 'N/A'
+  | (string & {});
 
 export type CableLayingStatus = CableStageStatus;
 export type CommissioningStatus = CableStageStatus;

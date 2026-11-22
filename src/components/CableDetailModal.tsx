@@ -33,7 +33,9 @@ export const CableDetailModal: React.FC = () => {
     canEdit,
     canApproveLevel,
     editHistory,
-    setIsLoginModalOpen
+    setIsLoginModalOpen,
+    customStatusOptions,
+    addCustomStatusOption
   } = useApp();
 
   if (!selectedCable) return null;
@@ -64,6 +66,22 @@ export const CableDetailModal: React.FC = () => {
   const linkedAssignment = workAssignments.find(
     a => (a.cableTag && a.cableTag === selectedCable.cableTag) || (a.cableId && a.cableId === selectedCable.id)
   );
+
+  const handleStatusSelection = async (
+    val: string, 
+    setter: (v: any) => void
+  ) => {
+    if (val === '__ADD_MORE_OPTION__') {
+      const input = window.prompt("Enter new status option name (e.g. Scope of Akij, Third Party Inspection):");
+      if (input && input.trim()) {
+        const clean = input.trim();
+        await addCustomStatusOption(clean);
+        setter(clean);
+      }
+      return;
+    }
+    setter(val);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,7 +240,7 @@ export const CableDetailModal: React.FC = () => {
                 <select
                   disabled={!canEdit}
                   value={cableLayingStatus}
-                  onChange={(e) => setCableLayingStatus(e.target.value as CableLayingStatus)}
+                  onChange={(e) => handleStatusSelection(e.target.value, setCableLayingStatus)}
                   className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-slate-100 font-semibold text-xs focus:outline-none focus:border-emerald-500"
                 >
                   <option value="Complete By VEL">✓ Complete By VEL</option>
@@ -231,8 +249,15 @@ export const CableDetailModal: React.FC = () => {
                   <option value="Pending">⏱ Pending</option>
                   <option value="Scope of Bargen">Scope of Bargen</option>
                   <option value="Scope of VEL">Scope of VEL</option>
+                  <option value="Scope of Akij">Scope of Akij</option>
                   <option value="Out of Scope">Out of Scope</option>
                   <option value="N/A">N/A</option>
+                  {customStatusOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                  <option value="__ADD_MORE_OPTION__" className="font-bold text-amber-400 bg-amber-950">
+                    ➕ Add More Option...
+                  </option>
                 </select>
               </div>
             </div>
@@ -248,7 +273,7 @@ export const CableDetailModal: React.FC = () => {
                 <select
                   disabled={!canEdit}
                   value={preCommissioningStatus}
-                  onChange={(e) => setPreCommissioningStatus(e.target.value as CommissioningStatus)}
+                  onChange={(e) => handleStatusSelection(e.target.value, setPreCommissioningStatus)}
                   className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-slate-100 font-semibold text-xs focus:outline-none focus:border-emerald-500"
                 >
                   <option value="Complete By Bargen">✓ Complete By Bargen</option>
@@ -257,8 +282,15 @@ export const CableDetailModal: React.FC = () => {
                   <option value="Pending">⏱ Pending</option>
                   <option value="Scope of Bargen">Scope of Bargen</option>
                   <option value="Scope of VEL">Scope of VEL</option>
+                  <option value="Scope of Akij">Scope of Akij</option>
                   <option value="Out of Scope">Out of Scope</option>
                   <option value="N/A">N/A</option>
+                  {customStatusOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                  <option value="__ADD_MORE_OPTION__" className="font-bold text-amber-400 bg-amber-950">
+                    ➕ Add More Option...
+                  </option>
                 </select>
               </div>
             </div>
@@ -274,7 +306,7 @@ export const CableDetailModal: React.FC = () => {
                 <select
                   disabled={!canEdit}
                   value={commissioningStatus}
-                  onChange={(e) => setCommissioningStatus(e.target.value as CommissioningStatus)}
+                  onChange={(e) => handleStatusSelection(e.target.value, setCommissioningStatus)}
                   className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-slate-100 font-semibold text-xs focus:outline-none focus:border-emerald-500"
                 >
                   <option value="Complete By Bargen">✓ Complete By Bargen</option>
@@ -283,8 +315,15 @@ export const CableDetailModal: React.FC = () => {
                   <option value="Pending">⏱ Pending</option>
                   <option value="Scope of Bargen">Scope of Bargen</option>
                   <option value="Scope of VEL">Scope of VEL</option>
+                  <option value="Scope of Akij">Scope of Akij</option>
                   <option value="Out of Scope">Out of Scope</option>
                   <option value="N/A">N/A</option>
+                  {customStatusOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                  <option value="__ADD_MORE_OPTION__" className="font-bold text-amber-400 bg-amber-950">
+                    ➕ Add More Option...
+                  </option>
                 </select>
               </div>
             </div>

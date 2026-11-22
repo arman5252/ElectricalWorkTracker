@@ -35,6 +35,7 @@ export const normalizeStatus = (status?: string): string => {
   if (lower === 'pending') return 'Pending';
   if (lower === 'scope of bargen') return 'Scope of Bargen';
   if (lower === 'scope of vel') return 'Scope of VEL';
+  if (lower === 'scope of akij' || lower === 'akij') return 'Scope of Akij';
   if (lower === 'out of scope') return 'Out of Scope';
   if (lower === 'n/a' || lower === 'na') return 'N/A';
   return s || 'Pending';
@@ -53,13 +54,16 @@ export const getPillStyle = (status: string) => {
       return 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 shadow-sm font-bold';
     case 'Scope of VEL':
       return 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 shadow-sm font-bold';
+    case 'Scope of Akij':
+      return 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-sm font-bold';
     case 'Out of Scope':
       return 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 border border-slate-700/60 shadow-sm font-medium';
     case 'N/A':
       return 'bg-slate-800/60 hover:bg-slate-750 text-slate-500 border border-slate-700/40 shadow-sm font-medium';
     case 'Pending':
-    default:
       return 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 shadow-sm font-bold';
+    default:
+      return 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 shadow-sm font-bold';
   }
 };
 
@@ -70,7 +74,22 @@ export const StatusPill: React.FC<{
   disabled?: boolean;
   onBlocked?: () => void;
 }> = ({ status, onChange, disabled, onBlocked }) => {
+  const { customStatusOptions, addCustomStatusOption } = useApp();
   const norm = normalizeStatus(status);
+
+  const handleSelectChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === '__ADD_MORE_OPTION__') {
+      const input = window.prompt("Enter new status option name (e.g. Scope of Akij, Under Inspection, Third Party):");
+      if (input && input.trim()) {
+        const clean = input.trim();
+        await addCustomStatusOption(clean);
+        onChange(clean);
+      }
+      return;
+    }
+    onChange(val);
+  };
 
   if (disabled) {
     return (
@@ -95,7 +114,7 @@ export const StatusPill: React.FC<{
     >
       <select
         value={norm}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleSelectChange}
         className={`appearance-none cursor-pointer py-1 pl-2 pr-5 rounded-full text-[10.5px] tracking-tight border border-white/10 focus:outline-none transition-all w-full text-center truncate ${getPillStyle(norm)}`}
       >
         <option value="Complete By VEL" className="bg-slate-900 text-emerald-400 py-1 font-bold">✓ Complete By VEL</option>
@@ -104,8 +123,15 @@ export const StatusPill: React.FC<{
         <option value="Pending" className="bg-slate-900 text-rose-400 py-1 font-semibold">⏱ Pending</option>
         <option value="Scope of Bargen" className="bg-slate-900 text-cyan-300 py-1 font-semibold">Scope of Bargen</option>
         <option value="Scope of VEL" className="bg-slate-900 text-blue-300 py-1 font-semibold">Scope of VEL</option>
+        <option value="Scope of Akij" className="bg-slate-900 text-amber-300 py-1 font-semibold">Scope of Akij</option>
         <option value="Out of Scope" className="bg-slate-900 text-slate-400 py-1 font-semibold">Out of Scope</option>
         <option value="N/A" className="bg-slate-900 text-slate-400 py-1 font-semibold">N/A</option>
+        {customStatusOptions.map(opt => (
+          <option key={opt} value={opt} className="bg-slate-900 text-purple-300 py-1 font-semibold">{opt}</option>
+        ))}
+        <option value="__ADD_MORE_OPTION__" className="bg-amber-950 text-amber-300 font-bold py-1 border-t border-amber-500/40">
+          ➕ Add More Option...
+        </option>
       </select>
       <ChevronDown className={`w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${
         norm === 'Progress' ? 'text-[#14532d]' : 'text-white/80'
@@ -158,13 +184,19 @@ export const ScheduleView: React.FC = () => {
     currentUser,
     isStaff,
     setIsLoginModalOpen,
-    setIsImportModalOpen
+    setIsImportModalOpen,
+    customStatusOptions,
+    allStatusOptions,
+    addCustomStatusOption,
+    removeCustomStatusOption
   } = useApp();
 
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(100);
   const [assignedStaffFilter, setAssignedStaffFilter] = useState('All');
+  const [isManageStatusModalOpen, setIsManageStatusModalOpen] = useState(false);
+  const [newStatusInput, setNewStatusInput] = useState('');
 
   // Approval Sign-off Dialog with Note Option before approval
   interface ApprovalDialogState {
@@ -603,15 +635,32 @@ export const ScheduleView: React.FC = () => {
               )}
             </div>
 
-            {activeFiltersCount > 0 && (
+            <div className="flex items-center gap-3">
               <button
-                onClick={resetAllFilters}
-                className="flex items-center gap-1 text-slate-400 hover:text-amber-300 text-xs font-medium transition-colors"
+                type="button"
+                onClick={() => setIsManageStatusModalOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-850 hover:border-amber-500/40 border border-slate-800 rounded-lg text-slate-300 hover:text-amber-300 text-xs font-semibold transition-all shadow-sm"
+                title="Manage and Add Status Options"
               >
-                <RotateCcw className="w-3 h-3" />
-                <span>Reset Filters</span>
+                <PlusCircle className="w-3.5 h-3.5 text-amber-400" />
+                <span>+ Custom Status</span>
+                {customStatusOptions.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold">
+                    {customStatusOptions.length}
+                  </span>
+                )}
               </button>
-            )}
+
+              {activeFiltersCount > 0 && (
+                <button
+                  onClick={resetAllFilters}
+                  className="flex items-center gap-1 text-slate-400 hover:text-amber-300 text-xs font-medium transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset Filters</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-xs">
@@ -661,7 +710,20 @@ export const ScheduleView: React.FC = () => {
             <div>
               <select
                 value={cableLayingFilter}
-                onChange={e => { setCableLayingFilter(e.target.value); setCurrentPage(1); }}
+                onChange={async (e) => {
+                  if (e.target.value === '__ADD_MORE_OPTION__') {
+                    const input = window.prompt("Enter new status option name (e.g. Scope of Akij, Third Party Inspection):");
+                    if (input && input.trim()) {
+                      const clean = input.trim();
+                      await addCustomStatusOption(clean);
+                      setCableLayingFilter(clean);
+                      setCurrentPage(1);
+                    }
+                    return;
+                  }
+                  setCableLayingFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full py-1.5 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-400 truncate"
               >
                 <option value="All">Laying: All</option>
@@ -672,8 +734,13 @@ export const ScheduleView: React.FC = () => {
                 <option value="Pending">Laying: Pending</option>
                 <option value="Scope of Bargen">Laying: Scope of Bargen</option>
                 <option value="Scope of VEL">Laying: Scope of VEL</option>
+                <option value="Scope of Akij" className="font-semibold text-amber-300">Laying: Scope of Akij</option>
                 <option value="Out of Scope">Laying: Out of Scope</option>
                 <option value="N/A">Laying: N/A</option>
+                {customStatusOptions.map(opt => (
+                  <option key={opt} value={opt} className="font-semibold text-purple-300">Laying: {opt}</option>
+                ))}
+                <option value="__ADD_MORE_OPTION__" className="font-bold text-amber-400 bg-amber-950/80">➕ Add More Option...</option>
               </select>
             </div>
 
@@ -681,7 +748,20 @@ export const ScheduleView: React.FC = () => {
             <div>
               <select
                 value={preCommissioningFilter}
-                onChange={e => { setPreCommissioningFilter(e.target.value); setCurrentPage(1); }}
+                onChange={async (e) => {
+                  if (e.target.value === '__ADD_MORE_OPTION__') {
+                    const input = window.prompt("Enter new status option name (e.g. Scope of Akij, Third Party Inspection):");
+                    if (input && input.trim()) {
+                      const clean = input.trim();
+                      await addCustomStatusOption(clean);
+                      setPreCommissioningFilter(clean);
+                      setCurrentPage(1);
+                    }
+                    return;
+                  }
+                  setPreCommissioningFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full py-1.5 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-400 truncate"
               >
                 <option value="All">Pre-Comm: All</option>
@@ -692,8 +772,13 @@ export const ScheduleView: React.FC = () => {
                 <option value="Pending">Pre-Comm: Pending</option>
                 <option value="Scope of Bargen">Pre-Comm: Scope of Bargen</option>
                 <option value="Scope of VEL">Pre-Comm: Scope of VEL</option>
+                <option value="Scope of Akij" className="font-semibold text-amber-300">Pre-Comm: Scope of Akij</option>
                 <option value="Out of Scope">Pre-Comm: Out of Scope</option>
                 <option value="N/A">Pre-Comm: N/A</option>
+                {customStatusOptions.map(opt => (
+                  <option key={opt} value={opt} className="font-semibold text-purple-300">Pre-Comm: {opt}</option>
+                ))}
+                <option value="__ADD_MORE_OPTION__" className="font-bold text-amber-400 bg-amber-950/80">➕ Add More Option...</option>
               </select>
             </div>
 
@@ -701,7 +786,20 @@ export const ScheduleView: React.FC = () => {
             <div>
               <select
                 value={commissioningFilter}
-                onChange={e => { setCommissioningFilter(e.target.value); setCurrentPage(1); }}
+                onChange={async (e) => {
+                  if (e.target.value === '__ADD_MORE_OPTION__') {
+                    const input = window.prompt("Enter new status option name (e.g. Scope of Akij, Third Party Inspection):");
+                    if (input && input.trim()) {
+                      const clean = input.trim();
+                      await addCustomStatusOption(clean);
+                      setCommissioningFilter(clean);
+                      setCurrentPage(1);
+                    }
+                    return;
+                  }
+                  setCommissioningFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full py-1.5 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-400 truncate"
               >
                 <option value="All">Comm: All</option>
@@ -712,8 +810,13 @@ export const ScheduleView: React.FC = () => {
                 <option value="Pending">Comm: Pending</option>
                 <option value="Scope of Bargen">Comm: Scope of Bargen</option>
                 <option value="Scope of VEL">Comm: Scope of VEL</option>
+                <option value="Scope of Akij" className="font-semibold text-amber-300">Comm: Scope of Akij</option>
                 <option value="Out of Scope">Comm: Out of Scope</option>
                 <option value="N/A">Comm: N/A</option>
+                {customStatusOptions.map(opt => (
+                  <option key={opt} value={opt} className="font-semibold text-purple-300">Comm: {opt}</option>
+                ))}
+                <option value="__ADD_MORE_OPTION__" className="font-bold text-amber-400 bg-amber-950/80">➕ Add More Option...</option>
               </select>
             </div>
 
@@ -1575,6 +1678,112 @@ export const ScheduleView: React.FC = () => {
               >
                 {approvalDialog.action === 'sign' ? 'Confirm & Sign Approval' : 'Confirm Revoke'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Manage & Add Custom Status Options */}
+      {isManageStatusModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 animate-in fade-in duration-150"
+          onClick={() => setIsManageStatusModalOpen(false)}
+        >
+          <div 
+            className="relative w-full max-w-md glass-card rounded-3xl border border-slate-800 p-6 text-slate-100 shadow-2xl space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                  <PlusCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">Workflow Status Options</h3>
+                  <p className="text-[11px] text-slate-400">Add or manage custom options for all stages</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManageStatusModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Add New Status Input Form */}
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (newStatusInput.trim()) {
+                  await addCustomStatusOption(newStatusInput.trim());
+                  setNewStatusInput('');
+                }
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="text"
+                value={newStatusInput}
+                onChange={(e) => setNewStatusInput(e.target.value)}
+                placeholder="e.g. Scope of Akij, Under Inspection..."
+                className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+              />
+              <button
+                type="submit"
+                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md active:scale-95 flex items-center gap-1 shrink-0"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Add Option</span>
+              </button>
+            </form>
+
+            {/* Custom Options List */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                User Custom Options ({customStatusOptions.length})
+              </div>
+              {customStatusOptions.length === 0 ? (
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-850 text-center text-xs text-slate-500">
+                  No custom options added yet. Type a name above to add new options anytime.
+                </div>
+              ) : (
+                <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                  {customStatusOptions.map(opt => (
+                    <div 
+                      key={opt}
+                      className="flex items-center justify-between p-2 rounded-xl bg-slate-950/70 border border-slate-800 text-xs"
+                    >
+                      <span className={`px-2 py-0.5 rounded-full text-[10.5px] ${getPillStyle(opt)}`}>
+                        {opt}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeCustomStatusOption(opt)}
+                        className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                        title={`Delete ${opt}`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Standard Built-in Options */}
+            <div className="space-y-2 pt-2 border-t border-slate-800/80">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Standard Built-in Options ({allStatusOptions.filter(o => !customStatusOptions.includes(o)).length})
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {allStatusOptions.filter(o => !customStatusOptions.includes(o)).map(opt => (
+                  <span key={opt} className={`px-2 py-0.5 rounded-full text-[10px] ${getPillStyle(opt)}`}>
+                    {opt}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -26,7 +26,8 @@ export const ScheduleStats: React.FC = () => {
     approverFilter,
     setApproverFilter,
     scheduleTypeFilter,
-    setActiveView 
+    setActiveView,
+    customStatusOptions
   } = useApp();
 
   // Dynamic scope: if user selected LV or Control tab in schedule, metrics reflect that scope. Otherwise All.
@@ -138,6 +139,14 @@ export const ScheduleStats: React.FC = () => {
                 <option value="Complete By Bargen" className="bg-slate-900 text-teal-300">✓ Complete By Bargen ({layingBargen})</option>
                 <option value="Progress" className="bg-slate-900 text-sky-300">⏳ Progress ({layingProgress})</option>
                 <option value="Pending" className="bg-slate-900 text-rose-400">⏱ Pending ({layingPending})</option>
+                <option value="Scope of Bargen" className="bg-slate-900 text-cyan-300">Scope of Bargen</option>
+                <option value="Scope of VEL" className="bg-slate-900 text-blue-300">Scope of VEL</option>
+                <option value="Scope of Akij" className="bg-slate-900 text-amber-300">Scope of Akij</option>
+                <option value="Out of Scope" className="bg-slate-900 text-slate-400">Out of Scope</option>
+                <option value="N/A" className="bg-slate-900 text-slate-400">N/A</option>
+                {customStatusOptions.map(opt => (
+                  <option key={opt} value={opt} className="bg-slate-900 text-purple-300">{opt}</option>
+                ))}
               </select>
               <ChevronDown className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
             </div>

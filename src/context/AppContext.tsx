@@ -37,7 +37,10 @@ import {
   EDIT_HISTORY_RECORD_ID,
   fetchStaffAccountsFromSupabase,
   saveStaffAccountsToSupabase,
-  STAFF_ACCOUNTS_RECORD_ID
+  STAFF_ACCOUNTS_RECORD_ID,
+  fetchCustomStatusesFromSupabase,
+  saveCustomStatusesToSupabase,
+  CUSTOM_STATUSES_RECORD_ID
 } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
 
@@ -45,6 +48,19 @@ const STORAGE_KEY = 'volttrack_cables_schedule_state_v4_uploaded';
 const SETTINGS_KEY = 'volttrack_settings_state_v3';
 const ASSIGNMENTS_STORAGE_KEY = 'volttrack_work_assignments_v1';
 const EDIT_HISTORY_STORAGE_KEY = 'volttrack_staff_edit_history_v1';
+const CUSTOM_STATUSES_STORAGE_KEY = 'volttrack_custom_status_options_v1';
+
+export const DEFAULT_STATUS_OPTIONS: string[] = [
+  'Complete By VEL',
+  'Complete By Bargen',
+  'Progress',
+  'Pending',
+  'Scope of Bargen',
+  'Scope of VEL',
+  'Scope of Akij',
+  'Out of Scope',
+  'N/A'
+];
 
 export const INITIAL_WORK_ASSIGNMENTS: WorkAssignment[] = [
   {
@@ -150,6 +166,12 @@ interface AppContextType {
   staffAccounts: StaffAccountItem[];
   updateStaffCredentials: (staffId: string, newUsername: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
   resetStaffCredentialsToDefault: () => Promise<void>;
+
+  // Custom Dynamic Status Options
+  customStatusOptions: string[];
+  allStatusOptions: string[];
+  addCustomStatusOption: (newOption: string) => Promise<boolean>;
+  removeCustomStatusOption: (optionToRemove: string) => Promise<boolean>;
 
   // Staff Edit History & Audit Logs
   editHistory: StaffEditRecord[];
@@ -285,6 +307,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Staff Credentials Accounts State (Admin Managed)
   const [staffAccounts, setStaffAccounts] = useState<StaffAccountItem[]>(() => loadStoredStaffAccounts());
+
+  // Custom Dynamic Status Options State
+  const [customStatusOptions, setCustomStatusOptions] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(CUSTOM_STATUSES_STORAGE_KEY);
+      if (saved !== null) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  const allStatusOptions = useMemo(() => {
+    const list = [...DEFAULT_STATUS_OPTIONS];
+    for (const opt of customStatusOptions) {
+      if (!list.includes(opt)) list.push(opt);
+    }
+    return list;
+  }, [customStatusOptions]);
+
+  const addCustomStatusOption = async (newOption: string): Promise<boolean> => {
+    const clean = String(newOption || '').trim();
+    if (!clean) {
+      showToast('Status name cannot be empty', 'warning');
+      return false;
+    }
+    if (allStatusOptions.some(opt => opt.toLowerCase() === clean.toLowerCase())) {
+      showToast(`Status option "${clean}" already exists!`, 'info');
+      return true;
+    }
+
+    const updated = [...customStatusOptions, clean];
+    setCustomStatusOptions(updated);
+    try {
+      localStorage.setItem(CUSTOM_STATUSES_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {}
+
+    await saveCustomStatusesToSupabase(updated);
+    showToast(`Added new status option: "${clean}"`, 'success');
+    return true;
+  };
+
+  const removeCustomStatusOption = async (optionToRemove: string): Promise<boolean> => {
+    const updated = customStatusOptions.filter(opt => opt !== optionToRemove);
+    setCustomStatusOptions(updated);
+    try {
+      localStorage.setItem(CUSTOM_STATUSES_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {}
+    await saveCustomStatusesToSupabase(updated);
+    showToast(`Removed custom status option: "${optionToRemove}"`, 'info');
+    return true;
+  };
 
   // Staff Edit History & Audit Logs
   const [editHistory, setEditHistory] = useState<StaffEditRecord[]>(() => {
@@ -589,6 +664,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }).catch(err => console.warn('[Supabase Staff Accounts Load Warning]:', err));
 
+    // 1e. Fetch Custom Status Options from Supabase
+    fetchCustomStatusesFromSupabase().then(dbStatuses => {
+      if (dbStatuses !== null && Array.isArray(dbStatuses)) {
+        setCustomStatusOptions(dbStatuses);
+        try {
+          localStorage.setItem(CUSTOM_STATUSES_STORAGE_KEY, JSON.stringify(dbStatuses));
+        } catch (e) {}
+        console.log(`[Supabase DB] Loaded ${dbStatuses.length} custom status options`);
+      }
+    }).catch(err => console.warn('[Supabase Custom Statuses Load Warning]:', err));
+
     // 2. Real-Time WebSocket Channel for instant sync across all users
     try {
       const channel = client
@@ -626,6 +712,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (Array.isArray(parsed) && parsed.length > 0) {
                   setStaffAccounts(parsed);
                   saveStoredStaffAccounts(parsed);
+                }
+              } catch (e) {}
+              return;
+            }
+
+            // Check if it's custom statuses record
+            if (payload.new && (payload.new.id === CUSTOM_STATUSES_RECORD_ID || payload.new.cable_tag === '__CUSTOM_STATUSES__') && payload.new.description) {
+              try {
+                const parsed = JSON.parse(payload.new.description);
+                if (Array.isArray(parsed)) {
+                  setCustomStatusOptions(parsed);
+                  localStorage.setItem(CUSTOM_STATUSES_STORAGE_KEY, JSON.stringify(parsed));
                 }
               } catch (e) {}
               return;
@@ -1221,6 +1319,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       staffAccounts,
       updateStaffCredentials,
       resetStaffCredentialsToDefault,
+      customStatusOptions,
+      allStatusOptions,
+      addCustomStatusOption,
+      removeCustomStatusOption,
       editHistory,
       recordStaffEdit,
       clearEditHistory,
