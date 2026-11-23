@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { CableEntry, CableLayingStatus, CommissioningStatus } from '../types';
+import { CableEntry, CableLayingStatus, CableTerminationStatus, CommissioningStatus } from '../types';
 import * as XLSX from 'xlsx';
 import { 
   Search, 
@@ -68,7 +68,7 @@ export const getPillStyle = (status: string) => {
 };
 
 export const StatusPill: React.FC<{
-  type: 'laying' | 'pre' | 'comm';
+  type: 'laying' | 'termination' | 'pre' | 'comm';
   status: string;
   onChange: (newStatus: any) => void;
   disabled?: boolean;
@@ -159,6 +159,8 @@ export const ScheduleView: React.FC = () => {
     setCableSizeFilter,
     cableLayingFilter,
     setCableLayingFilter,
+    cableTerminationFilter,
+    setCableTerminationFilter,
     preCommissioningFilter,
     setPreCommissioningFilter,
     commissioningFilter,
@@ -167,6 +169,7 @@ export const ScheduleView: React.FC = () => {
     setApproverFilter,
     resetAllFilters,
     updateCableLayingStatus,
+    updateCableTerminationStatus,
     updatePreCommissioningStatus,
     updateCommissioningStatus,
     updateApprovers,
@@ -265,12 +268,20 @@ export const ScheduleView: React.FC = () => {
       if (cableSizeFilter !== 'All' && cable.cableSize !== cableSizeFilter) return false;
       if (cableTypeFilter !== 'All' && cable.cableType !== cableTypeFilter) return false;
 
-      // 3 Stages Filters with normalized comparison
+      // Stages Filters with normalized comparison
       if (cableLayingFilter !== 'All') {
         const norm = normalizeStatus(cable.cableLayingStatus);
         if (cableLayingFilter === 'Done' || cableLayingFilter === 'Completed' || cableLayingFilter === 'All Completed') {
           if (norm !== 'Complete By VEL' && norm !== 'Complete By Bargen') return false;
         } else if (norm !== normalizeStatus(cableLayingFilter)) {
+          return false;
+        }
+      }
+      if (cableTerminationFilter !== 'All') {
+        const norm = normalizeStatus(cable.cableTerminationStatus);
+        if (cableTerminationFilter === 'Done' || cableTerminationFilter === 'Completed' || cableTerminationFilter === 'All Completed') {
+          if (norm !== 'Complete By VEL' && norm !== 'Complete By Bargen') return false;
+        } else if (norm !== normalizeStatus(cableTerminationFilter)) {
           return false;
         }
       }
@@ -331,6 +342,7 @@ export const ScheduleView: React.FC = () => {
     cableSizeFilter,
     cableTypeFilter,
     cableLayingFilter,
+    cableTerminationFilter,
     preCommissioningFilter,
     commissioningFilter,
     approverFilter,
@@ -347,6 +359,7 @@ export const ScheduleView: React.FC = () => {
     cableSizeFilter !== 'All',
     cableTypeFilter !== 'All',
     cableLayingFilter !== 'All',
+    cableTerminationFilter !== 'All',
     preCommissioningFilter !== 'All',
     commissioningFilter !== 'All',
     approverFilter !== 'All',
@@ -373,6 +386,7 @@ export const ScheduleView: React.FC = () => {
       'CABLE TYPE',
       'DESCRIPTION',
       'CABLE LAYING STATUS',
+      'CABLE TERMINATION STATUS',
       'PRE-COMMISSIONING STATUS',
       'COMMISSIONING STATUS',
       'APPROVE BY (LEVEL 1: NAYEM SIDDIK)',
@@ -396,6 +410,7 @@ export const ScheduleView: React.FC = () => {
       `"${c.cableType}"`,
       `"${c.description.replace(/"/g, '""')}"`,
       `"${c.cableLayingStatus}"`,
+      `"${c.cableTerminationStatus || 'Pending'}"`,
       `"${c.preCommissioningStatus}"`,
       `"${c.commissioningStatus}"`,
       `"${c.approvedBy1 || ''}"`,
@@ -452,6 +467,8 @@ export const ScheduleView: React.FC = () => {
           status: 'Installed',
           cableLayingStatus: (r['Cable Laying Status'] as CableLayingStatus) || 'Pending',
           cableLayingRemarks: String(r['Cable Laying Remarks'] || ''),
+          cableTerminationStatus: (r['Cable Termination Status'] as CableTerminationStatus) || 'Pending',
+          cableTerminationRemarks: String(r['Cable Termination Remarks'] || ''),
           preCommissioningStatus: (r['Pre-Commissioning Status'] as CommissioningStatus) || 'Pending',
           preCommissioningRemarks: String(r['Pre-Commissioning Remarks'] || ''),
           commissioningStatus: (r['Commissioning Status'] as CommissioningStatus) || 'Pending',
@@ -663,7 +680,7 @@ export const ScheduleView: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 text-xs">
             {/* Section */}
             <div>
               <select
@@ -739,6 +756,44 @@ export const ScheduleView: React.FC = () => {
                 <option value="N/A">Laying: N/A</option>
                 {customStatusOptions.map(opt => (
                   <option key={opt} value={opt} className="font-semibold text-purple-300">Laying: {opt}</option>
+                ))}
+                <option value="__ADD_MORE_OPTION__" className="font-bold text-amber-400 bg-amber-950/80">➕ Add More Option...</option>
+              </select>
+            </div>
+
+            {/* Cable Termination Status */}
+            <div>
+              <select
+                value={cableTerminationFilter}
+                onChange={async (e) => {
+                  if (e.target.value === '__ADD_MORE_OPTION__') {
+                    const input = window.prompt("Enter new status option name (e.g. Scope of Akij, Third Party Inspection):");
+                    if (input && input.trim()) {
+                      const clean = input.trim();
+                      await addCustomStatusOption(clean);
+                      setCableTerminationFilter(clean);
+                      setCurrentPage(1);
+                    }
+                    return;
+                  }
+                  setCableTerminationFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full py-1.5 px-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-400 truncate"
+              >
+                <option value="All">Termination: All</option>
+                <option value="Done" className="font-bold text-cyan-400">✓ Termination: Total Done</option>
+                <option value="Complete By VEL">Termination: Complete By VEL</option>
+                <option value="Complete By Bargen">Termination: Complete By Bargen</option>
+                <option value="Progress">Termination: Progress</option>
+                <option value="Pending">Termination: Pending</option>
+                <option value="Scope of Bargen">Termination: Scope of Bargen</option>
+                <option value="Scope of VEL">Termination: Scope of VEL</option>
+                <option value="Scope of Akij" className="font-semibold text-amber-300">Termination: Scope of Akij</option>
+                <option value="Out of Scope">Termination: Out of Scope</option>
+                <option value="N/A">Termination: N/A</option>
+                {customStatusOptions.map(opt => (
+                  <option key={opt} value={opt} className="font-semibold text-purple-300">Termination: {opt}</option>
                 ))}
                 <option value="__ADD_MORE_OPTION__" className="font-bold text-amber-400 bg-amber-950/80">➕ Add More Option...</option>
               </select>
@@ -884,6 +939,12 @@ export const ScheduleView: React.FC = () => {
                   <button onClick={() => setCableLayingFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
                 </span>
               )}
+              {cableTerminationFilter !== 'All' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-medium">
+                  <span>Termination: {cableTerminationFilter}</span>
+                  <button onClick={() => setCableTerminationFilter('All')} className="hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
               {preCommissioningFilter !== 'All' && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-300 font-medium">
                   <span>Pre-Comm: {preCommissioningFilter}</span>
@@ -969,17 +1030,19 @@ export const ScheduleView: React.FC = () => {
                 <col style={{ width: '155px' }} />
                 {/* 5. Cable Laying Status */}
                 <col style={{ width: '130px' }} />
-                {/* 6. Pre-Commissioning Status */}
+                {/* 6. Cable Termination Status */}
                 <col style={{ width: '130px' }} />
-                {/* 7. Commissioning Status */}
+                {/* 7. Pre-Commissioning Status */}
                 <col style={{ width: '130px' }} />
-                {/* 8. Nayem Siddik */}
+                {/* 8. Commissioning Status */}
+                <col style={{ width: '130px' }} />
+                {/* 9. Nayem Siddik */}
                 <col style={{ width: '115px' }} />
-                {/* 9. Mossadek Hossain */}
+                {/* 10. Mossadek Hossain */}
                 <col style={{ width: '115px' }} />
-                {/* 10. Md Fahad */}
+                {/* 11. Md Fahad */}
                 <col style={{ width: '115px' }} />
-                {/* 11. View Action */}
+                {/* 12. View Action */}
                 <col style={{ width: '44px' }} />
               </colgroup>
 
@@ -992,10 +1055,13 @@ export const ScheduleView: React.FC = () => {
                   <th colSpan={1} className="py-2.5 px-3 text-center bg-slate-900/95 text-emerald-400 font-extrabold border-r border-slate-800/80 tracking-wider">
                     Cable Laying
                   </th>
+                  <th colSpan={1} className="py-2.5 px-3 text-center bg-slate-900/95 text-cyan-400 font-extrabold border-r border-slate-800/80 tracking-wider">
+                    Cable Termination
+                  </th>
                   <th colSpan={1} className="py-2.5 px-3 text-center bg-slate-900/95 text-teal-400 font-extrabold border-r border-slate-800/80 tracking-wider">
                     Pre-Commissioning
                   </th>
-                  <th colSpan={1} className="py-2.5 px-3 text-center bg-slate-900/95 text-cyan-400 font-extrabold border-r border-slate-800/80 tracking-wider">
+                  <th colSpan={1} className="py-2.5 px-3 text-center bg-slate-900/95 text-purple-400 font-extrabold border-r border-slate-800/80 tracking-wider">
                     Commissioning
                   </th>
                   <th colSpan={3} className="py-2.5 px-3 text-center bg-slate-900/95 text-amber-400 font-extrabold border-r border-slate-800/80 tracking-wider">
@@ -1012,6 +1078,9 @@ export const ScheduleView: React.FC = () => {
                   <th className="py-2.5 px-3 bg-slate-950 border-r border-slate-800">To (Destination)</th>
                   
                   {/* Cable Laying subheader */}
+                  <th className="py-2.5 px-2 text-center bg-slate-950 border-r border-slate-800">Status</th>
+
+                  {/* Cable Termination subheader */}
                   <th className="py-2.5 px-2 text-center bg-slate-950 border-r border-slate-800">Status</th>
 
                   {/* Pre-Commissioning subheader */}
@@ -1040,7 +1109,7 @@ export const ScheduleView: React.FC = () => {
               <tbody className="divide-y divide-slate-800/60 font-sans">
                 {paginatedCables.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-16 text-center text-slate-500">
+                    <td colSpan={12} className="py-16 text-center text-slate-500">
                       No cables matched your filters.
                     </td>
                   </tr>
@@ -1118,6 +1187,20 @@ export const ScheduleView: React.FC = () => {
                             setIsLoginModalOpen(true);
                           }}
                           onChange={(newStatus) => updateCableLayingStatus(cable.id, newStatus)}
+                        />
+                      </td>
+
+                      {/* Cable Termination Status Pill */}
+                      <td className="py-2 px-2 text-center whitespace-nowrap bg-slate-950/25 border-r border-slate-800">
+                        <StatusPill
+                          type="termination"
+                          status={cable.cableTerminationStatus}
+                          disabled={!canEdit}
+                          onBlocked={() => {
+                            showToast('Staff Login Required: Log in as Senior Engineer or Admin to change status.', 'warning');
+                            setIsLoginModalOpen(true);
+                          }}
+                          onChange={(newStatus) => updateCableTerminationStatus(cable.id, newStatus)}
                         />
                       </td>
 
@@ -1380,7 +1463,7 @@ export const ScheduleView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 3 Phases Badges Grid */}
+                {/* Phases Badges Grid */}
                 <div className="space-y-2 p-3 bg-slate-950/40 rounded-xl border border-slate-850/60 text-xs">
                   <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
                     <span className="text-[10px] text-slate-400 uppercase font-semibold">Cable Laying:</span>
@@ -1393,6 +1476,19 @@ export const ScheduleView: React.FC = () => {
                         setIsLoginModalOpen(true);
                       }}
                       onChange={(newStatus) => updateCableLayingStatus(cable.id, newStatus)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold">Cable Termination:</span>
+                    <StatusPill
+                      type="termination"
+                      status={cable.cableTerminationStatus}
+                      disabled={!canEdit}
+                      onBlocked={() => {
+                        showToast('Staff Login Required: Log in as Senior Engineer or Admin to change status.', 'warning');
+                        setIsLoginModalOpen(true);
+                      }}
+                      onChange={(newStatus) => updateCableTerminationStatus(cable.id, newStatus)}
                     />
                   </div>
                   <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>

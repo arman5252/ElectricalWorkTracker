@@ -48,6 +48,7 @@ export type WorkPriority = 'Urgent' | 'High' | 'Medium' | 'Low';
 export type WorkAssignmentStatus = 'Assigned' | 'In Progress' | 'Under Review' | 'Completed' | 'On Hold';
 export type WorkTaskType = 
   | 'Cable Laying' 
+  | 'Cable Termination'
   | 'Pre-Commissioning' 
   | 'Commissioning' 
   | 'Insulation & Megger Test' 
@@ -101,6 +102,7 @@ export type CableStageStatus =
   | (string & {});
 
 export type CableLayingStatus = CableStageStatus;
+export type CableTerminationStatus = CableStageStatus;
 export type CommissioningStatus = CableStageStatus;
 export type CableStatus = CableStageStatus;
 
@@ -131,11 +133,15 @@ export interface CableEntry {
   cableLayingStatus: CableLayingStatus;
   cableLayingRemarks?: string;
 
-  // Phase 2: Pre-Commissioning
+  // Phase 2: Cable Termination
+  cableTerminationStatus: CableTerminationStatus;
+  cableTerminationRemarks?: string;
+
+  // Phase 3: Pre-Commissioning
   preCommissioningStatus: CommissioningStatus;
   preCommissioningRemarks?: string;
 
-  // Phase 3: Commissioning
+  // Phase 4: Commissioning
   commissioningStatus: CommissioningStatus;
   commissioningRemarks?: string;
 

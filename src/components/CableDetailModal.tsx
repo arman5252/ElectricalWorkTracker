@@ -17,7 +17,7 @@ import {
   History
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { CableEntry, CableLayingStatus, CommissioningStatus } from '../types';
+import { CableEntry, CableLayingStatus, CableTerminationStatus, CommissioningStatus } from '../types';
 import { normalizeStatus } from './ScheduleView';
 
 export const CableDetailModal: React.FC = () => {
@@ -42,6 +42,10 @@ export const CableDetailModal: React.FC = () => {
 
   const [cableLayingStatus, setCableLayingStatus] = useState<CableLayingStatus>(
     (normalizeStatus(selectedCable.cableLayingStatus) as CableLayingStatus) || 'Pending'
+  );
+
+  const [cableTerminationStatus, setCableTerminationStatus] = useState<CableTerminationStatus>(
+    (normalizeStatus(selectedCable.cableTerminationStatus) as CableTerminationStatus) || 'Pending'
   );
   
   const [preCommissioningStatus, setPreCommissioningStatus] = useState<CommissioningStatus>(
@@ -101,6 +105,7 @@ export const CableDetailModal: React.FC = () => {
 
     updateCable(selectedCable.id, {
       cableLayingStatus,
+      cableTerminationStatus,
       preCommissioningStatus,
       commissioningStatus,
       approvedBy1: newApprovedBy1,
@@ -228,7 +233,7 @@ export const CableDetailModal: React.FC = () => {
 
         {/* 3 Work Stages Form Controls */}
         <form onSubmit={handleSave} className="mt-4 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             {/* 1. Cable Laying */}
             <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2">
               <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wide flex items-center justify-between">
@@ -262,9 +267,42 @@ export const CableDetailModal: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. Pre-Commissioning */}
+            {/* 2. Cable Termination */}
             <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2">
-              <div className="text-[11px] font-bold text-emerald-500 uppercase tracking-wide flex items-center justify-between">
+              <div className="text-[11px] font-bold text-cyan-400 uppercase tracking-wide flex items-center justify-between">
+                <span>Cable Termination</span>
+                {!canEdit && <Lock className="w-3 h-3 text-slate-500" />}
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">Status</label>
+                <select
+                  disabled={!canEdit}
+                  value={cableTerminationStatus}
+                  onChange={(e) => handleStatusSelection(e.target.value, setCableTerminationStatus)}
+                  className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-slate-100 font-semibold text-xs focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="Complete By VEL">✓ Complete By VEL</option>
+                  <option value="Complete By Bargen">✓ Complete By Bargen</option>
+                  <option value="Progress">⏳ Progress</option>
+                  <option value="Pending">⏱ Pending</option>
+                  <option value="Scope of Bargen">Scope of Bargen</option>
+                  <option value="Scope of VEL">Scope of VEL</option>
+                  <option value="Scope of Akij">Scope of Akij</option>
+                  <option value="Out of Scope">Out of Scope</option>
+                  <option value="N/A">N/A</option>
+                  {customStatusOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                  <option value="__ADD_MORE_OPTION__" className="font-bold text-amber-400 bg-amber-950">
+                    ➕ Add More Option...
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            {/* 3. Pre-Commissioning */}
+            <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2">
+              <div className="text-[11px] font-bold text-teal-400 uppercase tracking-wide flex items-center justify-between">
                 <span>Pre-Commissioning</span>
                 {!canEdit && <Lock className="w-3 h-3 text-slate-500" />}
               </div>
@@ -295,7 +333,7 @@ export const CableDetailModal: React.FC = () => {
               </div>
             </div>
 
-            {/* 3. Commissioning */}
+            {/* 4. Commissioning */}
             <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2">
               <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wide flex items-center justify-between">
                 <span>Commissioning</span>

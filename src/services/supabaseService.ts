@@ -73,6 +73,22 @@ export function getSupabaseClient(): SupabaseClient | null {
 }
 
 export function mapDbRowToCableEntry(row: any): CableEntry {
+  let parsedNotes = row.notes || '';
+  let termStatus: any = row.cable_termination_status || 'Pending';
+  let termRemarks = row.cable_termination_remarks || '';
+  let actualNotes = parsedNotes;
+
+  if (typeof parsedNotes === 'string' && parsedNotes.startsWith('{') && parsedNotes.endsWith('}')) {
+    try {
+      const obj = JSON.parse(parsedNotes);
+      if (obj.termStatus !== undefined) termStatus = obj.termStatus;
+      if (obj.termRemarks !== undefined) termRemarks = obj.termRemarks;
+      if (obj.note !== undefined) actualNotes = obj.note;
+    } catch {
+      // not json, leave as plain text
+    }
+  }
+
   return {
     id: row.id || `CBL-${row.cable_tag || row.sr_no}`,
     scheduleType: row.schedule_type || 'Control Cable Schedule',
@@ -90,6 +106,8 @@ export function mapDbRowToCableEntry(row: any): CableEntry {
     voltage: row.voltage || 'Control / 110V',
     cableLayingStatus: row.cable_laying_status || 'Pending',
     cableLayingRemarks: row.cable_laying_remarks || '',
+    cableTerminationStatus: termStatus,
+    cableTerminationRemarks: termRemarks,
     preCommissioningStatus: row.pre_commissioning_status || 'Pending',
     preCommissioningRemarks: row.pre_commissioning_remarks || '',
     commissioningStatus: row.commissioning_status || 'Pending',
@@ -100,7 +118,7 @@ export function mapDbRowToCableEntry(row: any): CableEntry {
     approvalNote2: row.pre_commissioning_remarks || '',
     approvedBy3: row.approved_by3 || undefined,
     approvalNote3: row.commissioning_remarks || '',
-    notes: row.notes || '',
+    notes: actualNotes,
     drawingUrl: row.drawing_url || '',
     status: row.commissioning_status || 'Pending',
     updatedAt: row.updated_at || new Date().toISOString()
@@ -108,6 +126,15 @@ export function mapDbRowToCableEntry(row: any): CableEntry {
 }
 
 export function mapCableEntryToDbRow(cable: CableEntry): any {
+  let notesPayload = cable.notes || '';
+  if (cable.cableTerminationStatus || cable.cableTerminationRemarks) {
+    notesPayload = JSON.stringify({
+      termStatus: cable.cableTerminationStatus || 'Pending',
+      termRemarks: cable.cableTerminationRemarks || '',
+      note: cable.notes || ''
+    });
+  }
+
   return {
     id: cable.id,
     schedule_type: cable.scheduleType,
@@ -132,7 +159,7 @@ export function mapCableEntryToDbRow(cable: CableEntry): any {
     approved_by1: cable.approvedBy1 || null,
     approved_by2: cable.approvedBy2 || null,
     approved_by3: cable.approvedBy3 || null,
-    notes: cable.notes || '',
+    notes: notesPayload,
     drawing_url: cable.drawingUrl || '',
     updated_at: new Date().toISOString()
   };

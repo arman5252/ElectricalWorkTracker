@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useMemo 
 import { 
   CableEntry, 
   CableLayingStatus, 
+  CableTerminationStatus,
   CommissioningStatus, 
   BoqItem, 
   ProjectSettings, 
@@ -198,9 +199,11 @@ interface AppContextType {
   cableTypeFilter: string;
   setCableTypeFilter: (val: string) => void;
   
-  // 3-Stage Progress & Approval Filters
+  // Progress & Approval Filters
   cableLayingFilter: string;
   setCableLayingFilter: (val: string) => void;
+  cableTerminationFilter: string;
+  setCableTerminationFilter: (val: string) => void;
   preCommissioningFilter: string;
   setPreCommissioningFilter: (val: string) => void;
   commissioningFilter: string;
@@ -210,8 +213,9 @@ interface AppContextType {
 
   resetAllFilters: () => void;
 
-  // Actions for the 3 stages & approvals
+  // Actions for the stages & approvals
   updateCableLayingStatus: (id: string, status: CableLayingStatus, remarks?: string) => void;
+  updateCableTerminationStatus: (id: string, status: CableTerminationStatus, remarks?: string) => void;
   updatePreCommissioningStatus: (id: string, status: CommissioningStatus, remarks?: string) => void;
   updateCommissioningStatus: (id: string, status: CommissioningStatus, remarks?: string) => void;
   updateApprovers: (id: string, level: 1 | 2 | 3, name: string, note?: string) => void;
@@ -242,13 +246,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].cableLayingStatus) {
-          return sortCablesInOrder(parsed);
+          return sortCablesInOrder(parsed.map(c => ({
+            ...c,
+            cableTerminationStatus: c.cableTerminationStatus || 'Pending'
+          })));
         }
       }
     } catch (e) {
       console.warn('Failed to load local storage:', e);
     }
-    return sortCablesInOrder(initialCables);
+    return sortCablesInOrder(initialCables.map(c => ({
+      ...c,
+      cableTerminationStatus: (c as any).cableTerminationStatus || 'Pending'
+    })));
   });
 
   const [boq] = useState<BoqItem[]>(boqSummary);
@@ -559,8 +569,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [cableSizeFilter, setCableSizeFilter] = useState('All');
   const [cableTypeFilter, setCableTypeFilter] = useState('All');
 
-  // Exact 3 Stages & Approval Filters
+  // Exact Stages & Approval Filters
   const [cableLayingFilter, setCableLayingFilter] = useState('All');
+  const [cableTerminationFilter, setCableTerminationFilter] = useState('All');
   const [preCommissioningFilter, setPreCommissioningFilter] = useState('All');
   const [commissioningFilter, setCommissioningFilter] = useState('All');
   const [approverFilter, setApproverFilter] = useState('All');
@@ -818,13 +829,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCableSizeFilter('All');
     setCableTypeFilter('All');
     setCableLayingFilter('All');
+    setCableTerminationFilter('All');
     setPreCommissioningFilter('All');
     setCommissioningFilter('All');
     setApproverFilter('All');
     showToast('All filters cleared', 'info');
   };
 
-  // Actions for 3 Stages & Approvals with direct Supabase Database Persistence
+  // Actions for Stages & Approvals with direct Supabase Database Persistence
   const updateCableLayingStatus = async (id: string, status: CableLayingStatus, remarks?: string) => {
     if (!canEdit) {
       showToast('Authentication required: Please log in as Senior Engineer or Admin to edit Cable Laying.', 'warning');
@@ -867,6 +879,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       action: 'Updated Cable Laying Status',
       fieldChanged: 'Cable Laying',
       oldValue: existing.cableLayingStatus,
+      newValue: status,
+      notes: remarks || undefined
+    });
+  };
+
+  const updateCableTerminationStatus = async (id: string, status: CableTerminationStatus, remarks?: string) => {
+    if (!canEdit) {
+      showToast('Authentication required: Please log in as Senior Engineer or Admin to edit Cable Termination.', 'warning');
+      setIsLoginModalOpen(true);
+      return;
+    }
+
+    const existing = cables.find(c => c.id === id);
+    if (!existing) return;
+
+    const updated: CableEntry = { 
+      ...existing, 
+      cableTerminationStatus: status, 
+      cableTerminationRemarks: remarks !== undefined ? remarks : existing.cableTerminationRemarks,
+      updatedAt: new Date().toISOString() 
+    };
+
+    // 1. Immediately update React state
+    setCables(prev => prev.map(c => c.id === id ? updated : c));
+    if (selectedCable && selectedCable.id === id) setSelectedCable(updated);
+
+    // 2. Immediately persist to localStorage
+    try {
+      const nextList = cables.map(c => c.id === id ? updated : c);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextList));
+    } catch (e) {}
+
+    // 3. Immediately persist to Supabase Database
+    const res = await updateCableInSupabase(updated);
+    if (res.success) {
+      showToast(`Cable Termination status set to "${status}" (Saved to Supabase DB)`, 'success');
+    } else {
+      console.warn('[Supabase Sync Warning]:', res.error);
+      showToast(`Saved locally. Supabase DB notice: ${res.error || 'Sync queued'}`, 'info');
+    }
+
+    recordStaffEdit({
+      targetType: 'Cable',
+      targetIdentifier: existing.cableTag,
+      action: 'Updated Cable Termination Status',
+      fieldChanged: 'Cable Termination',
+      oldValue: existing.cableTerminationStatus,
       newValue: status,
       notes: remarks || undefined
     });
@@ -1350,6 +1409,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCableTypeFilter,
       cableLayingFilter,
       setCableLayingFilter,
+      cableTerminationFilter,
+      setCableTerminationFilter,
       preCommissioningFilter,
       setPreCommissioningFilter,
       commissioningFilter,
@@ -1358,6 +1419,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setApproverFilter,
       resetAllFilters,
       updateCableLayingStatus,
+      updateCableTerminationStatus,
       updatePreCommissioningStatus,
       updateCommissioningStatus,
       updateApprovers,

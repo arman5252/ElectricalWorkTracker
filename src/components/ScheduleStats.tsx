@@ -19,6 +19,8 @@ export const ScheduleStats: React.FC = () => {
     cables, 
     cableLayingFilter,
     setCableLayingFilter,
+    cableTerminationFilter,
+    setCableTerminationFilter,
     preCommissioningFilter,
     setPreCommissioningFilter,
     commissioningFilter,
@@ -53,7 +55,20 @@ export const ScheduleStats: React.FC = () => {
   const layingProgressPercent = total > 0 ? Math.round((layingProgress / total) * 100) : 0;
   const layingPendingPercent = total > 0 ? Math.max(0, 100 - layingPercent - layingProgressPercent) : 0;
 
-  // 2. Pre-Commissioning metrics
+  // 2. Cable Termination metrics
+  const termVel = useMemo(() => scopedCables.filter(c => normalizeStatus(c.cableTerminationStatus) === 'Complete By VEL').length, [scopedCables]);
+  const termBargen = useMemo(() => scopedCables.filter(c => normalizeStatus(c.cableTerminationStatus) === 'Complete By Bargen').length, [scopedCables]);
+  const termDone = termVel + termBargen;
+  const termProgress = useMemo(() => scopedCables.filter(c => normalizeStatus(c.cableTerminationStatus) === 'Progress').length, [scopedCables]);
+  const termPending = useMemo(() => scopedCables.filter(c => {
+    const s = normalizeStatus(c.cableTerminationStatus);
+    return s === 'Pending' || !s;
+  }).length, [scopedCables]);
+  const termPercent = total > 0 ? Math.round((termDone / total) * 100) : 0;
+  const termProgressPercent = total > 0 ? Math.round((termProgress / total) * 100) : 0;
+  const termPendingPercent = total > 0 ? Math.max(0, 100 - termPercent - termProgressPercent) : 0;
+
+  // 3. Pre-Commissioning metrics
   const preBargen = useMemo(() => scopedCables.filter(c => normalizeStatus(c.preCommissioningStatus) === 'Complete By Bargen').length, [scopedCables]);
   const preVel = useMemo(() => scopedCables.filter(c => normalizeStatus(c.preCommissioningStatus) === 'Complete By VEL').length, [scopedCables]);
   const preDone = preBargen + preVel;
@@ -66,7 +81,7 @@ export const ScheduleStats: React.FC = () => {
   const preProgressPercent = total > 0 ? Math.round((preProgress / total) * 100) : 0;
   const prePendingPercent = total > 0 ? Math.max(0, 100 - prePercent - preProgressPercent) : 0;
 
-  // 3. Commissioning metrics
+  // 4. Commissioning metrics
   const commBargen = useMemo(() => scopedCables.filter(c => normalizeStatus(c.commissioningStatus) === 'Complete By Bargen').length, [scopedCables]);
   const commVel = useMemo(() => scopedCables.filter(c => normalizeStatus(c.commissioningStatus) === 'Complete By VEL').length, [scopedCables]);
   const commDone = commBargen + commVel;
@@ -90,7 +105,7 @@ export const ScheduleStats: React.FC = () => {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
         
         {/* Phase 1: Cable Laying */}
         <div 
@@ -224,7 +239,139 @@ export const ScheduleStats: React.FC = () => {
           </div>
         </div>
 
-        {/* Phase 2: Pre-Commissioning */}
+        {/* Phase 2: Cable Termination */}
+        <div 
+          onClick={() => { 
+            setCableTerminationFilter(cableTerminationFilter === 'Done' ? 'All' : 'Done'); 
+            setActiveView('schedule'); 
+          }}
+          className={`p-4 rounded-2xl glass-card transition-all cursor-pointer relative overflow-hidden group ${
+            cableTerminationFilter !== 'All'
+              ? 'border-cyan-500/80 ring-1 ring-cyan-500/40 glow-cyan'
+              : 'hover:border-cyan-500/40'
+          }`}
+        >
+          <div className="absolute -right-3 -top-3 w-20 h-20 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition-all pointer-events-none"></div>
+
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                Cable Termination
+              </span>
+              {scheduleTypeFilter !== 'All' && (
+                <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  {scheduleTypeFilter.includes('LV') ? 'LV' : 'CTRL'}
+                </span>
+              )}
+            </div>
+
+            {/* Interactive Status Selector Dropdown */}
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
+              <select
+                value={cableTerminationFilter}
+                onChange={(e) => {
+                  setCableTerminationFilter(e.target.value);
+                  setActiveView('schedule');
+                }}
+                className={`appearance-none cursor-pointer py-1 pl-2.5 pr-6 rounded-lg text-[10.5px] font-bold border transition-all focus:outline-none ${
+                  cableTerminationFilter !== 'All'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 ring-1 ring-cyan-500/30'
+                    : 'bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-700/80'
+                }`}
+                title="Filter schedule by Cable Termination status"
+              >
+                <option value="All" className="bg-slate-900 text-slate-300">All Termination ({total})</option>
+                <option value="Done" className="bg-slate-900 text-cyan-400 font-bold">✓ Total Done ({termDone})</option>
+                <option value="Complete By VEL" className="bg-slate-900 text-cyan-300">✓ Complete By VEL ({termVel})</option>
+                <option value="Complete By Bargen" className="bg-slate-900 text-teal-300">✓ Complete By Bargen ({termBargen})</option>
+                <option value="Progress" className="bg-slate-900 text-sky-300">⏳ Progress ({termProgress})</option>
+                <option value="Pending" className="bg-slate-900 text-rose-400">⏱ Pending ({termPending})</option>
+                <option value="Scope of Bargen" className="bg-slate-900 text-cyan-300">Scope of Bargen</option>
+                <option value="Scope of VEL" className="bg-slate-900 text-blue-300">Scope of VEL</option>
+                <option value="Scope of Akij" className="bg-slate-900 text-amber-300">Scope of Akij</option>
+                <option value="Out of Scope" className="bg-slate-900 text-slate-400">Out of Scope</option>
+                <option value="N/A" className="bg-slate-900 text-slate-400">N/A</option>
+                {customStatusOptions.map(opt => (
+                  <option key={opt} value={opt} className="bg-slate-900 text-purple-300">{opt}</option>
+                ))}
+              </select>
+              <ChevronDown className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+            </div>
+          </div>
+
+          <div className="flex items-baseline justify-between mt-1">
+            <div className="text-2xl font-black text-white">
+              {termDone} <span className="text-xs font-normal text-slate-400">/ {total}</span>
+            </div>
+            <span className="text-xs font-black text-cyan-400 font-mono">{termPercent}%</span>
+          </div>
+
+          {/* 3-Part Progress bar */}
+          <div className="w-full bg-slate-950/80 h-2 rounded-full mt-2.5 overflow-hidden flex border border-slate-800/80">
+            <div 
+              className="bg-cyan-500 h-full transition-all duration-300" 
+              style={{ width: `${termPercent}%` }} 
+              title={`Total Done: ${termDone} (${termVel} VEL, ${termBargen} Bargen)`}
+            />
+            <div 
+              className="bg-sky-400 h-full transition-all duration-300" 
+              style={{ width: `${termProgressPercent}%` }} 
+              title={`Progress: ${termProgress}`}
+            />
+            <div 
+              className="bg-rose-500/70 h-full transition-all duration-300" 
+              style={{ width: `${termPendingPercent}%` }} 
+              title={`Pending: ${termPending}`}
+            />
+          </div>
+
+          {/* Interactive Breakdown Pills */}
+          <div className="flex items-center justify-between mt-2.5 text-[10px]">
+            <span 
+              onClick={(e) => {
+                e.stopPropagation();
+                setCableTerminationFilter(cableTerminationFilter === 'Done' ? 'All' : 'Done');
+                setActiveView('schedule');
+              }}
+              className={`font-semibold cursor-pointer transition-colors ${
+                cableTerminationFilter === 'Done' ? 'text-cyan-300 underline font-bold' : 'text-cyan-400 hover:text-cyan-300'
+              }`}
+              title={`Click to view all ${termDone} completed cables (${termVel} by VEL, ${termBargen} by Bargen)`}
+            >
+              {termDone} Done <span className="opacity-75 font-normal text-[9px]">({termVel}V / {termBargen}B)</span>
+            </span>
+
+            <span 
+              onClick={(e) => {
+                e.stopPropagation();
+                setCableTerminationFilter(cableTerminationFilter === 'Progress' ? 'All' : 'Progress');
+                setActiveView('schedule');
+              }}
+              className={`cursor-pointer transition-colors ${
+                cableTerminationFilter === 'Progress' ? 'text-sky-300 underline font-bold' : 'text-sky-400/90 hover:text-white'
+              }`}
+              title={`Click to view ${termProgress} cables in progress`}
+            >
+              {termProgress} Progress
+            </span>
+
+            <span 
+              onClick={(e) => {
+                e.stopPropagation();
+                setCableTerminationFilter(cableTerminationFilter === 'Pending' ? 'All' : 'Pending');
+                setActiveView('schedule');
+              }}
+              className={`font-semibold cursor-pointer transition-colors ${
+                cableTerminationFilter === 'Pending' ? 'text-rose-300 underline font-bold' : 'text-rose-400/90 hover:text-rose-300'
+              }`}
+              title={`Click to view ${termPending} pending cables`}
+            >
+              {termPending} Pending
+            </span>
+          </div>
+        </div>
+
+        {/* Phase 3: Pre-Commissioning */}
         <div 
           onClick={() => { 
             setPreCommissioningFilter(preCommissioningFilter === 'Done' ? 'All' : 'Done'); 
